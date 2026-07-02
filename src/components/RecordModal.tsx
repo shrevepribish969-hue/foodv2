@@ -89,25 +89,45 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
       try {
         const orangeColor = '#FF9800'; // 明丽橘黄色
 
-        // 1. 创建橘色剪影离屏 canvas
+        // 1. 创建去噪硬化离屏 canvas
+        const cleanCanvas = document.createElement('canvas');
+        cleanCanvas.width = 300;
+        cleanCanvas.height = 300;
+        const cCtx = cleanCanvas.getContext('2d');
+        if (cCtx) {
+          cCtx.drawImage(imgCutout, x, y, w, h);
+          const imgData = cCtx.getImageData(0, 0, 300, 300);
+          const data = imgData.data;
+          // 阈值过滤：彻底剔除 Alpha < 180 的半透明热气或抠图背景杂质
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] < 180) {
+              data[i + 3] = 0;
+            } else {
+              data[i + 3] = 255;
+            }
+          }
+          cCtx.putImageData(imgData, 0, 0);
+        }
+
+        // 2. 创建橘色剪影离屏 canvas (源自 cleanCanvas)
         const orangeSilhouette = document.createElement('canvas');
         orangeSilhouette.width = 300;
         orangeSilhouette.height = 300;
         const oCtx = orangeSilhouette.getContext('2d');
         if (oCtx) {
-          oCtx.drawImage(imgCutout, x, y, w, h);
+          oCtx.drawImage(cleanCanvas, 0, 0);
           oCtx.globalCompositeOperation = 'source-in';
           oCtx.fillStyle = orangeColor;
           oCtx.fillRect(0, 0, 300, 300);
         }
 
-        // 2. 创建白色剪影离屏 canvas
+        // 3. 创建白色剪影离屏 canvas (源自 cleanCanvas)
         const whiteSilhouette = document.createElement('canvas');
         whiteSilhouette.width = 300;
         whiteSilhouette.height = 300;
         const wCtx = whiteSilhouette.getContext('2d');
         if (wCtx) {
-          wCtx.drawImage(imgCutout, x, y, w, h);
+          wCtx.drawImage(cleanCanvas, 0, 0);
           wCtx.globalCompositeOperation = 'source-in';
           wCtx.fillStyle = '#FFFFFF';
           wCtx.fillRect(0, 0, 300, 300);

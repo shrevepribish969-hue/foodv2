@@ -3,70 +3,6 @@ import { X, Camera, Star, Heart } from 'lucide-react';
 import { type FoodRecord, addRecord } from '../db';
 import { removeBackground } from '@imgly/background-removal';
 
-// 连通域边缘追踪（Moore-Neighbor 算法）
-function traceContour(width: number, height: number, isOpaque: (x: number, y: number) => boolean): { x: number; y: number }[] {
-  let startX = -1, startY = -1;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (isOpaque(x, y)) {
-        startX = x;
-        startY = y;
-        break;
-      }
-    }
-    if (startX !== -1) break;
-  }
-  if (startX === -1) return [];
-
-  const points: { x: number; y: number }[] = [];
-  let currX = startX;
-  let currY = startY;
-
-  const dx = [0, 1, 1, 1, 0, -1, -1, -1];
-  const dy = [-1, -1, 0, 1, 1, 1, 0, -1];
-
-  let dir = 7;
-  let limit = 0;
-
-  do {
-    let nextDir = (dir + 6) % 8;
-    let found = false;
-    for (let i = 0; i < 8; i++) {
-      const checkDir = (nextDir + i) % 8;
-      const nx = currX + dx[checkDir];
-      const ny = currY + dy[checkDir];
-      if (nx >= 0 && nx < width && ny >= 0 && ny < height && isOpaque(nx, ny)) {
-        currX = nx;
-        currY = ny;
-        dir = checkDir;
-        points.push({ x: nx, y: ny });
-        found = true;
-        break;
-      }
-    }
-    if (!found) break;
-    limit++;
-  } while ((currX !== startX || currY !== startY) && limit < 5000);
-
-  return points;
-}
-
-// 均值平滑滤波器
-function smoothPoints(pts: { x: number; y: number }[], windowSize = 5): { x: number; y: number }[] {
-  if (pts.length < windowSize) return pts;
-  const result: { x: number; y: number }[] = [];
-  const half = Math.floor(windowSize / 2);
-  for (let i = 0; i < pts.length; i++) {
-    let sumX = 0, sumY = 0;
-    for (let w = -half; w <= half; w++) {
-      const idx = (i + w + pts.length) % pts.length;
-      sumX += pts[idx].x;
-      sumY += pts[idx].y;
-    }
-    result.push({ x: sumX / windowSize, y: sumY / windowSize });
-  }
-  return result;
-}
 
 interface RecordModalProps {
   onClose: () => void;
@@ -150,10 +86,7 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     const y = (300 - h) / 2;
 
     if (imgCutout) {
-      // 1. 直接绘制去背景的食物本体，背景保持完全透明
-      ctx.drawImage(imgCutout, x, y, w, h);
-
-      // 2. 提取不规则轮廓进行虚线描边 (利用离屏 canvas 确保只对透明 cutout 图像做边缘检测)
+      // 1. 提取不规则轮廓的前置步骤：计算平均主体色
       try {
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = 300;
@@ -191,67 +124,39 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
             strokeColor = `rgb(${darkR}, ${darkG}, ${darkB})`;
           }
 
-          // 边缘检测：强制忽略最外层 5px，防止追踪至画布边缘产生矩形框
-          const isOpaque = (px: number, py: number) => {
-            if (px < 5 || px >= 295 || py < 5 || py >= 295) return false;
-            const idx = (py * 300 + px) * 4;
-            return tempData[idx + 3] > 40; // 检查 cutout 层的 alpha
-          };
-
-          const rawPoints = traceContour(300, 300, isOpaque);
-
-          if (rawPoints.length > 5) {
-            // 双重均值滤波平滑与 8px 法线向外扩展
-            const smoothed = smoothPoints(rawPoints, 9);
-            const offsetPoints: { x: number; y: number }[] = [];
-            const offsetDist = 8;
-            for (let i = 0; i < smoothed.length; i++) {
-              const prev = smoothed[(i - 1 + smoothed.length) % smoothed.length];
-              const next = smoothed[(i + 1) % smoothed.length];
-              const curr = smoothed[i];
-
-              const tx = next.x - prev.x;
-              const ty = next.y - prev.y;
-              const len = Math.sqrt(tx * tx + ty * ty);
-
-              if (len > 0.01) {
-                // 顺时针外侧法向量: (ty / len, -tx / len)
-                const nx = ty / len;
-                const ny = -tx / len;
-                offsetPoints.push({
-                  x: curr.x + nx * offsetDist,
-                  y: curr.y + ny * offsetDist
-                });
-              } else {
-                offsetPoints.push(curr);
-              }
-            }
-
-            const finalPoints = smoothPoints(offsetPoints, 9);
-
-            // 绘制紧贴食物轮廓的自适应主体加深虚线
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(finalPoints[0].x, finalPoints[0].y);
-            for (let i = 1; i < finalPoints.length; i++) {
-              ctx.lineTo(finalPoints[i].x, finalPoints[i].y);
-            }
-            ctx.closePath();
-
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 4;
-            ctx.setLineDash([8, 6]);
-            ctx.shadowColor = 'rgba(92, 75, 67, 0.2)';
-            ctx.shadowBlur = 4;
-            ctx.stroke();
-            ctx.restore();
+          // 2. 创建纯色剪影离屏 canvas
+          const silhouetteCanvas = document.createElement('canvas');
+          silhouetteCanvas.width = 300;
+          silhouetteCanvas.height = 300;
+          const sCtx = silhouetteCanvas.getContext('2d');
+          if (sCtx) {
+            sCtx.drawImage(imgCutout, x, y, w, h);
+            sCtx.globalCompositeOperation = 'source-in';
+            sCtx.fillStyle = strokeColor;
+            sCtx.fillRect(0, 0, 300, 300);
           }
+
+          // 3. 在主 canvas 上朝 8 个偏移方向绘制剪影，形成 3px 宽的紧贴轮廓线
+          const strokeWidth = 3;
+          ctx.save();
+          for (let angle = 0; angle < 360; angle += 45) {
+            const rad = (angle * Math.PI) / 180;
+            const ox = Math.cos(rad) * strokeWidth;
+            const oy = Math.sin(rad) * strokeWidth;
+            ctx.drawImage(silhouetteCanvas, ox, oy);
+          }
+          ctx.restore();
+
+          // 4. 正中心绘制彩色的食物本体，遮盖并呈现完美的描边边缘
+          ctx.drawImage(imgCutout, x, y, w, h);
         }
       } catch (e) {
-        console.error("Spotlight 轮廓描边计算异常:", e);
+        console.error("偏移剪影描边渲染异常:", e);
+        // 发生异常时，直接绘制原彩色食物作为最低保障
+        ctx.drawImage(imgCutout, x, y, w, h);
       }
     } else {
-      // 3. 抠图失败兜底方案：显示原图并叠加径向压暗
+      // 5. 抠图失败兜底方案：显示原图并叠加径向压暗
       ctx.drawImage(imgOriginal, x, y, w, h);
       ctx.save();
       const grad = ctx.createRadialGradient(150, 150, 20, 150, 150, 100);

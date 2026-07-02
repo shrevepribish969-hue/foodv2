@@ -78,68 +78,118 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     canvas.height = 300;
     ctx.clearRect(0, 0, 300, 300);
 
-    // 居中稍微缩小绘制，为外部虚线留出空间
-    const scale = Math.min(220 / imgOriginal.width, 220 / imgOriginal.height);
-    const w = imgOriginal.width * scale;
-    const h = imgOriginal.height * scale;
-    const x = (300 - w) / 2;
-    const y = (300 - h) / 2;
-
     if (imgCutout) {
       try {
         const orangeColor = '#FF9800'; // 明丽橘黄色
 
-        // 1. 创建去噪硬化离屏 canvas
-        const cleanCanvas = document.createElement('canvas');
-        cleanCanvas.width = 300;
-        cleanCanvas.height = 300;
-        const cCtx = cleanCanvas.getContext('2d');
-        if (cCtx) {
-          cCtx.drawImage(imgCutout, x, y, w, h);
-          const imgData = cCtx.getImageData(0, 0, 300, 300);
-          const data = imgData.data;
-          // 阈值过滤：彻底剔除 Alpha < 40 的半透明桌面背景杂质，保留 >= 40 的餐具与食物并硬化
-          for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] < 40) {
-              data[i + 3] = 0;
-            } else {
-              data[i + 3] = 255;
+        // 1. 获取 imgCutout 的真实不透明物体边界包围盒 (Bounding Box)
+        const boxCanvas = document.createElement('canvas');
+        boxCanvas.width = imgCutout.width;
+        boxCanvas.height = imgCutout.height;
+        const boxCtx = boxCanvas.getContext('2d');
+        if (!boxCtx) return;
+        boxCtx.drawImage(imgCutout, 0, 0);
+
+        const boxImgData = boxCtx.getImageData(0, 0, imgCutout.width, imgCutout.height);
+        const boxData = boxImgData.data;
+
+        let minX = imgCutout.width;
+        let minY = imgCutout.height;
+        let maxX = 0;
+        let maxY = 0;
+        let hasOpaque = false;
+
+        // 遍历整个像素，寻找有效食物及餐具的包围盒
+        for (let py = 0; py < imgCutout.height; py++) {
+          for (let px = 0; px < imgCutout.width; px++) {
+            const idx = (py * imgCutout.width + px) * 4;
+            const alpha = boxData[idx + 3];
+            if (alpha > 20) {
+              hasOpaque = true;
+              if (px < minX) minX = px;
+              if (px > maxX) maxX = px;
+              if (py < minY) minY = py;
+              if (py > maxY) maxY = py;
             }
           }
-          cCtx.putImageData(imgData, 0, 0);
         }
 
-        // 2. 创建橘色剪影离屏 canvas (源自 cleanCanvas)
+        // 兜底：若全是透明像素，则不进行裁剪
+        if (!hasOpaque) {
+          minX = 0;
+          minY = 0;
+          maxX = imgCutout.width - 1;
+          maxY = imgCutout.height - 1;
+        }
+
+        // 加上少许边缘 Padding 缓冲，防止硬裁剪擦除轮廓极边缘
+        const padding = 4;
+        minX = Math.max(0, minX - padding);
+        minY = Math.max(0, minY - padding);
+        maxX = Math.min(imgCutout.width - 1, maxX + padding);
+        maxY = Math.min(imgCutout.height - 1, maxY + padding);
+
+        const cropW = maxX - minX + 1;
+        const cropH = maxY - minY + 1;
+
+        // 2. 将裁剪内容绘制并执行去噪硬化
+        const cleanCanvas = document.createElement('canvas');
+        cleanCanvas.width = cropW;
+        cleanCanvas.height = cropH;
+        const cCtx = cleanCanvas.getContext('2d');
+        if (cCtx) {
+          cCtx.drawImage(boxCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+          const cleanImgData = cCtx.getImageData(0, 0, cropW, cropH);
+          const cleanData = cleanImgData.data;
+          // 彻底剔除 Alpha < 40 的模糊残留，硬化其他部分
+          for (let i = 0; i < cleanData.length; i += 4) {
+            if (cleanData[i + 3] < 40) {
+              cleanData[i + 3] = 0;
+            } else {
+              cleanData[i + 3] = 255;
+            }
+          }
+          cCtx.putImageData(cleanImgData, 0, 0);
+        }
+
+        // 3. 计算适配 300x300 画布的最大缩放系数 (使用上限 260px，确保保留描边空间)
+        const scale = Math.min(260 / cropW, 260 / cropH);
+        const w = cropW * scale;
+        const h = cropH * scale;
+        const x = (300 - w) / 2;
+        const y = (300 - h) / 2;
+
+        // 4. 创建橘黄色剪影离屏 canvas
         const orangeSilhouette = document.createElement('canvas');
         orangeSilhouette.width = 300;
         orangeSilhouette.height = 300;
         const oCtx = orangeSilhouette.getContext('2d');
         if (oCtx) {
-          oCtx.drawImage(cleanCanvas, 0, 0);
+          oCtx.drawImage(cleanCanvas, x, y, w, h);
           oCtx.globalCompositeOperation = 'source-in';
           oCtx.fillStyle = orangeColor;
           oCtx.fillRect(0, 0, 300, 300);
         }
 
-        // 3. 创建白色剪影离屏 canvas (源自 cleanCanvas)
+        // 5. 创建白色剪影离屏 canvas
         const whiteSilhouette = document.createElement('canvas');
         whiteSilhouette.width = 300;
         whiteSilhouette.height = 300;
         const wCtx = whiteSilhouette.getContext('2d');
         if (wCtx) {
-          wCtx.drawImage(cleanCanvas, 0, 0);
+          wCtx.drawImage(cleanCanvas, x, y, w, h);
           wCtx.globalCompositeOperation = 'source-in';
           wCtx.fillStyle = '#FFFFFF';
           wCtx.fillRect(0, 0, 300, 300);
         }
 
         // 定义描边线宽
-        const whiteBorder = 8;  // 8px 宽的白色底边
-        const orangeBorder = 3;  // 3px 宽的橘黄色外圈线
+        const whiteBorder = 8;
+        const orangeBorder = 3;
         const totalBorder = whiteBorder + orangeBorder;
 
         ctx.save();
-        // 3. 绘制最外层橘黄色线层 (朝 16 方向偏移以保证 11px 大平移下的平滑连续)
+        // 6. 朝 16 方向偏移绘制橘黄色线条底色层
         for (let angle = 0; angle < 360; angle += 22.5) {
           const rad = (angle * Math.PI) / 180;
           const ox = Math.cos(rad) * totalBorder;
@@ -147,7 +197,7 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
           ctx.drawImage(orangeSilhouette, ox, oy);
         }
 
-        // 4. 绘制白色贴纸底边层 (朝 16 方向偏移 8px)
+        // 7. 朝 16 方向偏移绘制白色贴纸底边层
         for (let angle = 0; angle < 360; angle += 22.5) {
           const rad = (angle * Math.PI) / 180;
           const ox = Math.cos(rad) * whiteBorder;
@@ -156,19 +206,31 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
         }
         ctx.restore();
 
-        // 5. 正中心绘制彩色的食物本体，覆盖多层剪影得到精致贴纸
-        ctx.drawImage(imgCutout, x, y, w, h);
+        // 8. 覆盖彩色剪裁食物本体
+        ctx.drawImage(boxCanvas, minX, minY, cropW, cropH, x, y, w, h);
       } catch (e) {
-        console.error("双重贴纸描边渲染异常:", e);
+        console.error("双重贴纸描边与包围盒裁剪渲染异常:", e);
+        // 兜底绘制未剪裁图
+        const scale = Math.min(220 / imgOriginal.width, 220 / imgOriginal.height);
+        const w = imgOriginal.width * scale;
+        const h = imgOriginal.height * scale;
+        const x = (300 - w) / 2;
+        const y = (300 - h) / 2;
         ctx.drawImage(imgCutout, x, y, w, h);
       }
     } else {
-      // 6. 抠图失败兜底方案：显示原图并叠加径向压暗，使用明丽橘色画圆圈虚边
+      // 9. 抠图失败兜底：显示原图并径向压暗
+      const scale = Math.min(220 / imgOriginal.width, 220 / imgOriginal.height);
+      const w = imgOriginal.width * scale;
+      const h = imgOriginal.height * scale;
+      const x = (300 - w) / 2;
+      const y = (300 - h) / 2;
+
       ctx.drawImage(imgOriginal, x, y, w, h);
       ctx.save();
       const grad = ctx.createRadialGradient(150, 150, 20, 150, 150, 100);
-      grad.addColorStop(0, 'rgba(0,0,0,0)'); // 中心明亮
-      grad.addColorStop(1, 'rgba(92, 75, 67, 0.55)'); // 四周压暗
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(92, 75, 67, 0.55)');
       
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, w, h);

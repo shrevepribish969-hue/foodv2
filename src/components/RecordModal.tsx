@@ -99,8 +99,10 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     setUseFallback(false);
     
     try {
-      // 1. 尝试调用 AI 去背景 (WASM 算法)
-      const processedBlob = await removeBackground(file);
+      // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
+      const processedBlob = await removeBackground(file, {
+        publicPath: `${window.location.origin}/background-removal/`
+      });
       
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
       const originalUrl = URL.createObjectURL(file);
@@ -147,18 +149,11 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     const x = (300 - w) / 2;
     const y = (300 - h) / 2;
 
-    // 1. 绘制底层原图
-    ctx.drawImage(imgOriginal, x, y, w, h);
-
     if (imgCutout) {
-      // 2. 在原图之上，覆盖一层柔和的深色遮罩进行压暗（仅图片范围）
-      ctx.fillStyle = 'rgba(92, 75, 67, 0.45)'; // 使用暖深褐以符合手账质感
-      ctx.fillRect(x, y, w, h);
-
-      // 3. 在最上层绘制明亮的去背景食物
+      // 1. 直接绘制去背景的食物本体，背景保持完全透明
       ctx.drawImage(imgCutout, x, y, w, h);
 
-      // 4. 提取不规则轮廓进行虚线描边 (利用离屏 canvas 确保只对透明 cutout 图像做边缘检测)
+      // 2. 提取不规则轮廓进行虚线描边 (利用离屏 canvas 确保只对透明 cutout 图像做边缘检测)
       try {
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = 300;
@@ -168,6 +163,33 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
           tempCtx.drawImage(imgCutout, x, y, w, h);
           const tempImgData = tempCtx.getImageData(0, 0, 300, 300);
           const tempData = tempImgData.data;
+
+          // 统计食物主体色平均 RGB
+          let totalR = 0, totalG = 0, totalB = 0, count = 0;
+          for (let i = 0; i < tempData.length; i += 4) {
+            const r = tempData[i];
+            const g = tempData[i + 1];
+            const b = tempData[i + 2];
+            const a = tempData[i + 3];
+            if (a > 40) {
+              totalR += r;
+              totalG += g;
+              totalB += b;
+              count++;
+            }
+          }
+
+          let strokeColor = '#5C4B43'; // 默认暖深褐兜底
+          if (count > 0) {
+            const avgR = totalR / count;
+            const avgG = totalG / count;
+            const avgB = totalB / count;
+            // 线性等比例加深（乘以 0.4）
+            const darkR = Math.round(avgR * 0.4);
+            const darkG = Math.round(avgG * 0.4);
+            const darkB = Math.round(avgB * 0.4);
+            strokeColor = `rgb(${darkR}, ${darkG}, ${darkB})`;
+          }
 
           // 边缘检测：强制忽略最外层 5px，防止追踪至画布边缘产生矩形框
           const isOpaque = (px: number, py: number) => {
@@ -207,7 +229,7 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
 
             const finalPoints = smoothPoints(offsetPoints, 9);
 
-            // 绘制紧贴食物轮廓的白色手绘风虚线
+            // 绘制紧贴食物轮廓的自适应主体加深虚线
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(finalPoints[0].x, finalPoints[0].y);
@@ -216,7 +238,7 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
             }
             ctx.closePath();
 
-            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 4;
             ctx.setLineDash([8, 6]);
             ctx.shadowColor = 'rgba(92, 75, 67, 0.2)';
@@ -229,20 +251,20 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
         console.error("Spotlight 轮廓描边计算异常:", e);
       }
     } else {
-      // 5. 兜底方案：如果没有 cutout，使用径向渐变聚光灯（中心亮、四周暗）
+      // 3. 抠图失败兜底方案：显示原图并叠加径向压暗
+      ctx.drawImage(imgOriginal, x, y, w, h);
       ctx.save();
       const grad = ctx.createRadialGradient(150, 150, 20, 150, 150, 100);
       grad.addColorStop(0, 'rgba(0,0,0,0)'); // 中心明亮
       grad.addColorStop(1, 'rgba(92, 75, 67, 0.55)'); // 四周压暗
       
-      // 限定在图片范围内进行聚光灯大招绘制
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, w, h);
 
-      // 绘制圆形手绘风虚线圈
+      // 绘制圆形手绘风虚线圈 (使用暖深褐描边)
       ctx.beginPath();
       ctx.arc(150, 150, 80, 0, Math.PI * 2);
-      ctx.strokeStyle = '#FFFFFF';
+      ctx.strokeStyle = '#5C4B43';
       ctx.lineWidth = 4;
       ctx.setLineDash([8, 6]);
       ctx.stroke();

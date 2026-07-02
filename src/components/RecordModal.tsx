@@ -86,77 +86,64 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     const y = (300 - h) / 2;
 
     if (imgCutout) {
-      // 1. 提取不规则轮廓的前置步骤：计算平均主体色
       try {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 300;
-        tempCanvas.height = 300;
-        const tempCtx = tempCanvas.getContext('2d');
-        if (tempCtx) {
-          tempCtx.drawImage(imgCutout, x, y, w, h);
-          const tempImgData = tempCtx.getImageData(0, 0, 300, 300);
-          const tempData = tempImgData.data;
+        const orangeColor = '#FF9800'; // 明丽橘黄色
 
-          // 统计食物主体色平均 RGB
-          let totalR = 0, totalG = 0, totalB = 0, count = 0;
-          for (let i = 0; i < tempData.length; i += 4) {
-            const r = tempData[i];
-            const g = tempData[i + 1];
-            const b = tempData[i + 2];
-            const a = tempData[i + 3];
-            if (a > 40) {
-              totalR += r;
-              totalG += g;
-              totalB += b;
-              count++;
-            }
-          }
-
-          let strokeColor = '#5C4B43'; // 默认暖深褐兜底
-          if (count > 0) {
-            const avgR = totalR / count;
-            const avgG = totalG / count;
-            const avgB = totalB / count;
-            // 线性等比例加深（乘以 0.4）
-            const darkR = Math.round(avgR * 0.4);
-            const darkG = Math.round(avgG * 0.4);
-            const darkB = Math.round(avgB * 0.4);
-            strokeColor = `rgb(${darkR}, ${darkG}, ${darkB})`;
-          }
-
-          // 2. 创建纯色剪影离屏 canvas
-          const silhouetteCanvas = document.createElement('canvas');
-          silhouetteCanvas.width = 300;
-          silhouetteCanvas.height = 300;
-          const sCtx = silhouetteCanvas.getContext('2d');
-          if (sCtx) {
-            sCtx.drawImage(imgCutout, x, y, w, h);
-            sCtx.globalCompositeOperation = 'source-in';
-            sCtx.fillStyle = strokeColor;
-            sCtx.fillRect(0, 0, 300, 300);
-          }
-
-          // 3. 在主 canvas 上朝 8 个偏移方向绘制剪影，形成 3px 宽的紧贴轮廓线
-          const strokeWidth = 3;
-          ctx.save();
-          for (let angle = 0; angle < 360; angle += 45) {
-            const rad = (angle * Math.PI) / 180;
-            const ox = Math.cos(rad) * strokeWidth;
-            const oy = Math.sin(rad) * strokeWidth;
-            ctx.drawImage(silhouetteCanvas, ox, oy);
-          }
-          ctx.restore();
-
-          // 4. 正中心绘制彩色的食物本体，遮盖并呈现完美的描边边缘
-          ctx.drawImage(imgCutout, x, y, w, h);
+        // 1. 创建橘色剪影离屏 canvas
+        const orangeSilhouette = document.createElement('canvas');
+        orangeSilhouette.width = 300;
+        orangeSilhouette.height = 300;
+        const oCtx = orangeSilhouette.getContext('2d');
+        if (oCtx) {
+          oCtx.drawImage(imgCutout, x, y, w, h);
+          oCtx.globalCompositeOperation = 'source-in';
+          oCtx.fillStyle = orangeColor;
+          oCtx.fillRect(0, 0, 300, 300);
         }
+
+        // 2. 创建白色剪影离屏 canvas
+        const whiteSilhouette = document.createElement('canvas');
+        whiteSilhouette.width = 300;
+        whiteSilhouette.height = 300;
+        const wCtx = whiteSilhouette.getContext('2d');
+        if (wCtx) {
+          wCtx.drawImage(imgCutout, x, y, w, h);
+          wCtx.globalCompositeOperation = 'source-in';
+          wCtx.fillStyle = '#FFFFFF';
+          wCtx.fillRect(0, 0, 300, 300);
+        }
+
+        // 定义描边线宽
+        const whiteBorder = 8;  // 8px 宽的白色底边
+        const orangeBorder = 3;  // 3px 宽的橘黄色外圈线
+        const totalBorder = whiteBorder + orangeBorder;
+
+        ctx.save();
+        // 3. 绘制最外层橘黄色线层 (朝 16 方向偏移以保证 11px 大平移下的平滑连续)
+        for (let angle = 0; angle < 360; angle += 22.5) {
+          const rad = (angle * Math.PI) / 180;
+          const ox = Math.cos(rad) * totalBorder;
+          const oy = Math.sin(rad) * totalBorder;
+          ctx.drawImage(orangeSilhouette, ox, oy);
+        }
+
+        // 4. 绘制白色贴纸底边层 (朝 16 方向偏移 8px)
+        for (let angle = 0; angle < 360; angle += 22.5) {
+          const rad = (angle * Math.PI) / 180;
+          const ox = Math.cos(rad) * whiteBorder;
+          const oy = Math.sin(rad) * whiteBorder;
+          ctx.drawImage(whiteSilhouette, ox, oy);
+        }
+        ctx.restore();
+
+        // 5. 正中心绘制彩色的食物本体，覆盖多层剪影得到精致贴纸
+        ctx.drawImage(imgCutout, x, y, w, h);
       } catch (e) {
-        console.error("偏移剪影描边渲染异常:", e);
-        // 发生异常时，直接绘制原彩色食物作为最低保障
+        console.error("双重贴纸描边渲染异常:", e);
         ctx.drawImage(imgCutout, x, y, w, h);
       }
     } else {
-      // 5. 抠图失败兜底方案：显示原图并叠加径向压暗
+      // 6. 抠图失败兜底方案：显示原图并叠加径向压暗，使用明丽橘色画圆圈虚边
       ctx.drawImage(imgOriginal, x, y, w, h);
       ctx.save();
       const grad = ctx.createRadialGradient(150, 150, 20, 150, 150, 100);
@@ -166,10 +153,10 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
       ctx.fillStyle = grad;
       ctx.fillRect(x, y, w, h);
 
-      // 绘制圆形手绘风虚线圈 (使用暖深褐描边)
+      // 绘制圆形手绘风虚线圈 (使用明丽橘色)
       ctx.beginPath();
       ctx.arc(150, 150, 80, 0, Math.PI * 2);
-      ctx.strokeStyle = '#5C4B43';
+      ctx.strokeStyle = '#FF9800';
       ctx.lineWidth = 4;
       ctx.setLineDash([8, 6]);
       ctx.stroke();

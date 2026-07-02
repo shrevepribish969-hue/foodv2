@@ -1,11 +1,11 @@
-# 双层贴纸白边与明丽橘黄色描边 Implementation Plan (去噪抗糊升级)
+# 双层贴纸白边与明丽橘黄色描边 Implementation Plan (去噪抗糊与餐具完整化)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 实现纯食物贴纸效果（背景透明），在食物边缘外扩 8px 白色层，并包裹 3px 宽的橘黄色（#FF9800）连续实线描边，并通过 Alpha 阈值过滤彻底清除边缘处的半透明糊边与热气噪点。
+**Goal:** 实现纯食物贴纸效果（背景透明），在食物/餐具最外边缘外扩 8px 白色层，并包裹 3px 宽的橘黄色（#FF9800）连续实线描边，修正阈值为 40 以完整包括白色餐具（纸盘子）。
 
 **Architecture:** 
-- 在 `renderCanvas` 中，先将 `imgCutout` 渲染至离屏 Canvas 并通过像素遍历把 Alpha 小于 180 的点清零，大于 180 的点置为 255。这能提供去噪硬化后的 `cleanCanvas` 作为白色与橘色剪影的生成来源；
+- 在 `renderCanvas` 中，先将 `imgCutout` 渲染至离屏 Canvas 并通过像素处理把 Alpha < 40 的背景点清零，大于 40 的餐具与主体点置为 255。这能提供去噪硬化后的 `cleanCanvas` 作为白色与橘色剪影的生成来源；
 - 沿用 16 方向偏移绘制底边层的架构。
 
 **Tech Stack:** React, Canvas API, TypeScript
@@ -14,7 +14,7 @@
 
 - 抠图成功时，背景保持透明
 - 白色扩边厚度为 8px，橘色线厚度为 3px
-- 对描边源应用 Alpha < 180 像素过滤清零，实现 100% 边缘去噪和硬边化
+- 对描边源应用 Alpha < 40 像素过滤清零，实现完整包裹盘子餐具外边缘
 - 抠图失败或兜底方案的圆形虚线圈描边颜色修改为 `#FF9800`
 
 ---
@@ -30,7 +30,7 @@
 
 - [ ] **Step 1: 重构 renderCanvas 像素去噪与绘制逻辑**
 
-修改 [RecordModal.tsx](file:///d:/A研二/food2.0纯记录/foodV2/src/components/RecordModal.tsx) 中的 `renderCanvas` 函数，在绘制剪影前加入对 `cleanCanvas` 的生成和像素遍历去噪硬化处理。
+修改 [RecordModal.tsx](file:///d:/A研二/food2.0纯记录/foodV2/src/components/RecordModal.tsx) 中的 `renderCanvas` 函数，在绘制剪影前加入对 `cleanCanvas` 的生成和像素遍历去噪硬化处理，将阈值调整为 40。
 
 具体重构后的 `renderCanvas` 代码：
 ```typescript
@@ -64,9 +64,9 @@
           cCtx.drawImage(imgCutout, x, y, w, h);
           const imgData = cCtx.getImageData(0, 0, 300, 300);
           const data = imgData.data;
-          // 阈值过滤：彻底剔除 Alpha < 180 的半透明热气或抠图背景杂质
+          // 阈值过滤：彻底剔除 Alpha < 40 的半透明桌面背景杂质，保留 >= 40 的餐具与食物并硬化
           for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] < 180) {
+            if (data[i + 3] < 40) {
               data[i + 3] = 0;
             } else {
               data[i + 3] = 255;
@@ -164,8 +164,8 @@
 - [ ] **Step 2: 验证描边与贴纸效果**
 
 手动验证：
-1. 刷新页面，上传包含零碎细节及右侧淡色热气/半透明阴影的食物图片。
-2. 观察生成的缩略图和虚边，确认背景已变成纯透明贴纸效果，右侧淡色朦胧背景已被 100% 滤除干净，边缘线条平整连续无噪点。
+1. 刷新页面，上传包含巴斯克与盘子的图片。
+2. 观察生成的缩略图和虚边，确认背景已变成纯透明贴纸效果，橘色线条完好地围绕在白色餐具盘子的最外边缘，不再缩水。
 3. 验证抠图失败或兜底情况，确认圆形虚线圈为 `#FF9800`。
 
 - [ ] **Step 3: 提交代码到 Git**
@@ -173,5 +173,5 @@
 运行：
 ```bash
 git add src/components/RecordModal.tsx
-git commit -m "feat: resolve blurry outline by implementing Alpha threshold filtering on sticker base"
+git commit -m "feat: adjust threshold to 40 to ensure outline wraps around white plates correctly"
 ```

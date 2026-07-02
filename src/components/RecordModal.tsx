@@ -98,9 +98,9 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
           cCtx.drawImage(imgCutout, x, y, w, h);
           const imgData = cCtx.getImageData(0, 0, 300, 300);
           const data = imgData.data;
-          // 阈值过滤：彻底剔除 Alpha < 180 的半透明热气或抠图背景杂质
+          // 阈值过滤：彻底剔除 Alpha < 40 的半透明桌面背景杂质，保留 >= 40 的餐具与食物并硬化
           for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] < 180) {
+            if (data[i + 3] < 40) {
               data[i + 3] = 0;
             } else {
               data[i + 3] = 255;

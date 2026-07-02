@@ -3,6 +3,71 @@ import { X, Camera, Star, Heart } from 'lucide-react';
 import { type FoodRecord, addRecord } from '../db';
 import { removeBackground } from '@imgly/background-removal';
 
+// 连通域边缘追踪（Moore-Neighbor 算法）
+function traceContour(width: number, height: number, isOpaque: (x: number, y: number) => boolean): { x: number; y: number }[] {
+  let startX = -1, startY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (isOpaque(x, y)) {
+        startX = x;
+        startY = y;
+        break;
+      }
+    }
+    if (startX !== -1) break;
+  }
+  if (startX === -1) return [];
+
+  const points: { x: number; y: number }[] = [];
+  let currX = startX;
+  let currY = startY;
+
+  const dx = [0, 1, 1, 1, 0, -1, -1, -1];
+  const dy = [-1, -1, 0, 1, 1, 1, 0, -1];
+
+  let dir = 7;
+  let limit = 0;
+
+  do {
+    let nextDir = (dir + 6) % 8;
+    let found = false;
+    for (let i = 0; i < 8; i++) {
+      const checkDir = (nextDir + i) % 8;
+      const nx = currX + dx[checkDir];
+      const ny = currY + dy[checkDir];
+      if (nx >= 0 && nx < width && ny >= 0 && ny < height && isOpaque(nx, ny)) {
+        currX = nx;
+        currY = ny;
+        dir = checkDir;
+        points.push({ x: nx, y: ny });
+        found = true;
+        break;
+      }
+    }
+    if (!found) break;
+    limit++;
+  } while ((currX !== startX || currY !== startY) && limit < 5000);
+
+  return points;
+}
+
+// 均值平滑滤波器
+function smoothPoints(pts: { x: number; y: number }[], windowSize = 5): { x: number; y: number }[] {
+  if (pts.length < windowSize) return pts;
+  const result: { x: number; y: number }[] = [];
+  const half = Math.floor(windowSize / 2);
+  for (let i = 0; i < pts.length; i++) {
+    let sumX = 0, sumY = 0;
+    for (let w = -half; w <= half; w++) {
+      const idx = (i + w + pts.length) % pts.length;
+      sumX += pts[idx].x;
+      sumY += pts[idx].y;
+    }
+    result.push({ x: sumX / windowSize, y: sumY / windowSize });
+  }
+  return result;
+}
+
 interface RecordModalProps {
   onClose: () => void;
   onSaved: () => void;
@@ -60,13 +125,12 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // 缩放画布至合适大小
       canvas.width = 300;
       canvas.height = 300;
       ctx.clearRect(0, 0, 300, 300);
 
-      // 居中绘制食物贴纸
-      const scale = Math.min(260 / img.width, 260 / img.height);
+      // 居中稍微缩小绘制食物，为外部虚线留出空间
+      const scale = Math.min(220 / img.width, 220 / img.height);
       const w = img.width * scale;
       const h = img.height * scale;
       const x = (300 - w) / 2;
@@ -74,11 +138,77 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
 
       ctx.drawImage(img, x, y, w, h);
 
-      // 绘制可爱的白色虚线框（模拟剪纸边界）
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([8, 6]);
-      ctx.strokeRect(x - 4, y - 4, w + 8, h + 8);
+      // 提取非透明像素的不规则边界
+      try {
+        const imgData = ctx.getImageData(0, 0, 300, 300);
+        const data = imgData.data;
+
+        const isOpaque = (px: number, py: number) => {
+          if (px < 0 || px >= 300 || py < 0 || py >= 300) return false;
+          const idx = (py * 300 + px) * 4;
+          return data[idx + 3] > 30; // Alpha > 30 认为是实体像素
+        };
+
+        const rawPoints = traceContour(300, 300, isOpaque);
+
+        if (rawPoints.length > 5) {
+          // 1. 均值平滑，消除锯齿以获得稳定的切线/法线
+          const smoothed = smoothPoints(rawPoints, 9);
+
+          // 2. 向外法线方向偏移 8px，产生贴纸白边距离
+          const offsetPoints: { x: number; y: number }[] = [];
+          const offsetDist = 8;
+          for (let i = 0; i < smoothed.length; i++) {
+            const prev = smoothed[(i - 1 + smoothed.length) % smoothed.length];
+            const next = smoothed[(i + 1) % smoothed.length];
+            const curr = smoothed[i];
+
+            const tx = next.x - prev.x;
+            const ty = next.y - prev.y;
+            const len = Math.sqrt(tx * tx + ty * ty);
+
+            if (len > 0.01) {
+              // 顺时针外侧法向量: (ty / len, -tx / len)
+              const nx = ty / len;
+              const ny = -tx / len;
+              offsetPoints.push({
+                x: curr.x + nx * offsetDist,
+                y: curr.y + ny * offsetDist
+              });
+            } else {
+              offsetPoints.push(curr);
+            }
+          }
+
+          // 3. 再次均值平滑，使最终的贴纸边缘虚线圆润丝滑
+          const finalPoints = smoothPoints(offsetPoints, 9);
+
+          // 4. 绘制闭合的不规则虚线
+          ctx.beginPath();
+          ctx.moveTo(finalPoints[0].x, finalPoints[0].y);
+          for (let i = 1; i < finalPoints.length; i++) {
+            ctx.lineTo(finalPoints[i].x, finalPoints[i].y);
+          }
+          ctx.closePath();
+
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([8, 6]);
+          ctx.shadowColor = 'rgba(92, 75, 67, 0.15)';
+          ctx.shadowBlur = 4;
+          ctx.stroke();
+        } else {
+          // 兜底：如果没找到足够多的边缘点，用圆形虚线圈包围
+          ctx.beginPath();
+          ctx.arc(150, 150, 120, 0, Math.PI * 2);
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([8, 6]);
+          ctx.stroke();
+        }
+      } catch (e) {
+        console.error("轮廓描边计算异常:", e);
+      }
 
       canvas.toBlob((b) => {
         if (b) {

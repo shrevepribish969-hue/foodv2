@@ -101,123 +101,163 @@ export default function RecordModal({ onClose, onSaved, initialDate }: RecordMod
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法)
       const processedBlob = await removeBackground(file);
-      setImageBlob(processedBlob);
       
-      // 2. 绘制描边
-      const imgUrl = URL.createObjectURL(processedBlob);
-      drawDashedBorder(imgUrl);
+      // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
+      const originalUrl = URL.createObjectURL(file);
+      const cutoutUrl = URL.createObjectURL(processedBlob);
+      drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err) {
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
-      // 兜底方案：使用原始大图，但在后续渲染时做桃心或圆角裁剪
-      setImageBlob(file);
-      setProcessedUrl(URL.createObjectURL(file));
-      setUseFallback(true);
-      setProcessing(false);
+      // 兜底方案：使用原始大图，做聚光灯模糊兜底
+      const originalUrl = URL.createObjectURL(file);
+      drawSpotlightFood(originalUrl, null);
     }
   };
 
-  const drawDashedBorder = (imgSrc: string) => {
-    const img = new Image();
-    img.src = imgSrc;
-    img.onload = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      canvas.width = 300;
-      canvas.height = 300;
-      ctx.clearRect(0, 0, 300, 300);
-
-      // 居中稍微缩小绘制食物，为外部虚线留出空间
-      const scale = Math.min(220 / img.width, 220 / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      const x = (300 - w) / 2;
-      const y = (300 - h) / 2;
-
-      ctx.drawImage(img, x, y, w, h);
-
-      // 提取非透明像素的不规则边界
-      try {
-        const imgData = ctx.getImageData(0, 0, 300, 300);
-        const data = imgData.data;
-
-        const isOpaque = (px: number, py: number) => {
-          if (px < 0 || px >= 300 || py < 0 || py >= 300) return false;
-          const idx = (py * 300 + px) * 4;
-          return data[idx + 3] > 30; // Alpha > 30 认为是实体像素
+  const drawSpotlightFood = (originalSrc: string, cutoutSrc: string | null) => {
+    const imgOriginal = new Image();
+    imgOriginal.src = originalSrc;
+    imgOriginal.onload = () => {
+      if (cutoutSrc) {
+        const imgCutout = new Image();
+        imgCutout.src = cutoutSrc;
+        imgCutout.onload = () => {
+          renderCanvas(imgOriginal, imgCutout);
         };
+      } else {
+        renderCanvas(imgOriginal, null);
+      }
+    };
+  };
 
-        const rawPoints = traceContour(300, 300, isOpaque);
+  const renderCanvas = (imgOriginal: HTMLImageElement, imgCutout: HTMLImageElement | null) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-        if (rawPoints.length > 5) {
-          // 1. 均值平滑，消除锯齿以获得稳定的切线/法线
-          const smoothed = smoothPoints(rawPoints, 9);
+    canvas.width = 300;
+    canvas.height = 300;
+    ctx.clearRect(0, 0, 300, 300);
 
-          // 2. 向外法线方向偏移 8px，产生贴纸白边距离
-          const offsetPoints: { x: number; y: number }[] = [];
-          const offsetDist = 8;
-          for (let i = 0; i < smoothed.length; i++) {
-            const prev = smoothed[(i - 1 + smoothed.length) % smoothed.length];
-            const next = smoothed[(i + 1) % smoothed.length];
-            const curr = smoothed[i];
+    // 居中稍微缩小绘制，为外部虚线留出空间
+    const scale = Math.min(220 / imgOriginal.width, 220 / imgOriginal.height);
+    const w = imgOriginal.width * scale;
+    const h = imgOriginal.height * scale;
+    const x = (300 - w) / 2;
+    const y = (300 - h) / 2;
 
-            const tx = next.x - prev.x;
-            const ty = next.y - prev.y;
-            const len = Math.sqrt(tx * tx + ty * ty);
+    // 1. 绘制底层原图
+    ctx.drawImage(imgOriginal, x, y, w, h);
 
-            if (len > 0.01) {
-              // 顺时针外侧法向量: (ty / len, -tx / len)
-              const nx = ty / len;
-              const ny = -tx / len;
-              offsetPoints.push({
-                x: curr.x + nx * offsetDist,
-                y: curr.y + ny * offsetDist
-              });
-            } else {
-              offsetPoints.push(curr);
+    if (imgCutout) {
+      // 2. 在原图之上，覆盖一层柔和的深色遮罩进行压暗（仅图片范围）
+      ctx.fillStyle = 'rgba(92, 75, 67, 0.45)'; // 使用暖深褐以符合手账质感
+      ctx.fillRect(x, y, w, h);
+
+      // 3. 在最上层绘制明亮的去背景食物
+      ctx.drawImage(imgCutout, x, y, w, h);
+
+      // 4. 提取不规则轮廓进行虚线描边 (利用离屏 canvas 确保只对透明 cutout 图像做边缘检测)
+      try {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 300;
+        tempCanvas.height = 300;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(imgCutout, x, y, w, h);
+          const tempImgData = tempCtx.getImageData(0, 0, 300, 300);
+          const tempData = tempImgData.data;
+
+          // 边缘检测：强制忽略最外层 5px，防止追踪至画布边缘产生矩形框
+          const isOpaque = (px: number, py: number) => {
+            if (px < 5 || px >= 295 || py < 5 || py >= 295) return false;
+            const idx = (py * 300 + px) * 4;
+            return tempData[idx + 3] > 40; // 检查 cutout 层的 alpha
+          };
+
+          const rawPoints = traceContour(300, 300, isOpaque);
+
+          if (rawPoints.length > 5) {
+            // 双重均值滤波平滑与 8px 法线向外扩展
+            const smoothed = smoothPoints(rawPoints, 9);
+            const offsetPoints: { x: number; y: number }[] = [];
+            const offsetDist = 8;
+            for (let i = 0; i < smoothed.length; i++) {
+              const prev = smoothed[(i - 1 + smoothed.length) % smoothed.length];
+              const next = smoothed[(i + 1) % smoothed.length];
+              const curr = smoothed[i];
+
+              const tx = next.x - prev.x;
+              const ty = next.y - prev.y;
+              const len = Math.sqrt(tx * tx + ty * ty);
+
+              if (len > 0.01) {
+                // 顺时针外侧法向量: (ty / len, -tx / len)
+                const nx = ty / len;
+                const ny = -tx / len;
+                offsetPoints.push({
+                  x: curr.x + nx * offsetDist,
+                  y: curr.y + ny * offsetDist
+                });
+              } else {
+                offsetPoints.push(curr);
+              }
             }
+
+            const finalPoints = smoothPoints(offsetPoints, 9);
+
+            // 绘制紧贴食物轮廓的白色手绘风虚线
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(finalPoints[0].x, finalPoints[0].y);
+            for (let i = 1; i < finalPoints.length; i++) {
+              ctx.lineTo(finalPoints[i].x, finalPoints[i].y);
+            }
+            ctx.closePath();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([8, 6]);
+            ctx.shadowColor = 'rgba(92, 75, 67, 0.2)';
+            ctx.shadowBlur = 4;
+            ctx.stroke();
+            ctx.restore();
           }
-
-          // 3. 再次均值平滑，使最终的贴纸边缘虚线圆润丝滑
-          const finalPoints = smoothPoints(offsetPoints, 9);
-
-          // 4. 绘制闭合的不规则虚线
-          ctx.beginPath();
-          ctx.moveTo(finalPoints[0].x, finalPoints[0].y);
-          for (let i = 1; i < finalPoints.length; i++) {
-            ctx.lineTo(finalPoints[i].x, finalPoints[i].y);
-          }
-          ctx.closePath();
-
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 4;
-          ctx.setLineDash([8, 6]);
-          ctx.shadowColor = 'rgba(92, 75, 67, 0.15)';
-          ctx.shadowBlur = 4;
-          ctx.stroke();
-        } else {
-          // 兜底：如果没找到足够多的边缘点，用圆形虚线圈包围
-          ctx.beginPath();
-          ctx.arc(150, 150, 120, 0, Math.PI * 2);
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 4;
-          ctx.setLineDash([8, 6]);
-          ctx.stroke();
         }
       } catch (e) {
-        console.error("轮廓描边计算异常:", e);
+        console.error("Spotlight 轮廓描边计算异常:", e);
       }
+    } else {
+      // 5. 兜底方案：如果没有 cutout，使用径向渐变聚光灯（中心亮、四周暗）
+      ctx.save();
+      const grad = ctx.createRadialGradient(150, 150, 20, 150, 150, 100);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); // 中心明亮
+      grad.addColorStop(1, 'rgba(92, 75, 67, 0.55)'); // 四周压暗
+      
+      // 限定在图片范围内进行聚光灯大招绘制
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, w, h);
 
-      canvas.toBlob((b) => {
-        if (b) {
-          setImageBlob(b);
-          setProcessedUrl(URL.createObjectURL(b));
-        }
-        setProcessing(false);
-      }, 'image/png');
-    };
+      // 绘制圆形手绘风虚线圈
+      ctx.beginPath();
+      ctx.arc(150, 150, 80, 0, Math.PI * 2);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 6]);
+      ctx.stroke();
+      ctx.restore();
+      
+      setUseFallback(true);
+    }
+
+    canvas.toBlob((b) => {
+      if (b) {
+        setImageBlob(b);
+        setProcessedUrl(URL.createObjectURL(b));
+      }
+      setProcessing(false);
+    }, 'image/png');
   };
 
   const handleSave = async () => {

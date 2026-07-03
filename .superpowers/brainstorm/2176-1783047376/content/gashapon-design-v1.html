@@ -1,0 +1,49 @@
+<h2>“今天吃什么”扭蛋机设计方案选择</h2>
+<p class="subtitle">请选择您期望的扭蛋抽签推荐算法与展示交互细节</p>
+
+<div class="section">
+  <h3>1. 推荐算法核心逻辑</h3>
+  <div class="options" data-choice-group="algo">
+    <div class="option" data-choice="algo-a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>【双池融合】5-20天吃过 + 好久没吃（推荐）</h3>
+        <p>主候选池为<b>5-20天前吃过的记录</b>（评分>=3）。如果为空或用户想要更多样化，融入<b>好久没吃（最近30天没吃过）</b>的菜品。排除最近5天内吃过的菜品（避免重复）。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="algo-b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>【严格限定】仅从 5-20 天内的三餐随机抽取</h3>
+        <p>严格只从5-20天吃过的高分（>=3）记录中随机抽选。如果在此区间内没有任何记录，则弹窗提示空状态，引导记录。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="algo-c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>【历史加权】全历史记录随机，越久没吃概率越高</h3>
+        <p>从所有评分>=3的历史美味中抽取。根据“好久没吃”的程度进行加权（如 30 天没吃的概率更高，0-5天内吃过的概率为0）。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. “去记录”按钮交互效果</h3>
+  <div class="options" data-choice-group="go">
+    <div class="option" data-choice="go-a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>【跳转并定位时间轴】（推荐）</h3>
+        <p>点击“去记录”，自动跳转并切换到底栏的“今天”时间轴页面，并平滑滚动到该餐记录的对应日期节点，方便用户回顾。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="go-b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>【仅在弹窗展示详情】</h3>
+        <p>点击后不进行页面跳转，而是原地展示这一餐的详细日记、伙伴、地点和备注大图。</p>
+      </div>
+    </div>
+  </div>
+</div>

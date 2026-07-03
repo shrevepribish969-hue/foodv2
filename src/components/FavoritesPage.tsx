@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type FoodRecord, getAllRecords } from '../db';
-import { MapPin, Users, Heart, Clock, Search, Utensils, Sparkles, ArrowLeft, RotateCw } from 'lucide-react';
-
+import { MapPin, Users, Heart, Clock, Search, Utensils, Sparkles, ArrowLeft } from 'lucide-react';
 function GashaponMachineSVG({ active }: { active: boolean }) {
   return (
     <svg 
@@ -9,7 +8,7 @@ function GashaponMachineSVG({ active }: { active: boolean }) {
       height="180" 
       viewBox="0 0 120 130" 
       fill="none" 
-      className={active ? "gashapon-active" : ""}
+      className={active ? "gashapon-shake-active" : ""}
       style={{ overflow: 'visible', transition: 'transform 0.3s ease' }}
     >
       {/* 闪烁的小星星 (背景装饰) */}
@@ -44,7 +43,7 @@ function GashaponMachineSVG({ active }: { active: boolean }) {
       <circle cx="60" cy="41" r="10" fill="#FFFFFF" stroke="#3E3A36" strokeWidth="2" />
       <text x="60" y="45" fontSize="11" fontWeight="bold" fill="#FF9800" textAnchor="middle">?</text>
 
-      {/* 扭蛋机金线底座 */}
+      {/* 扭蛋机金线底部 */}
       <path d="M30 73 L90 73 C93 73, 95 75, 95 78 L91 106 C91 109, 88 111, 85 111 L35 111 C32 111, 29 109, 29 106 L25 78 C25 75, 27 73, 30 73 Z" fill="#F5C77E" stroke="#3E3A36" strokeWidth="2.5" />
       <path d="M27 73 L93 73 L91 79 L29 79 Z" fill="#E57373" stroke="#3E3A36" strokeWidth="2" />
       
@@ -70,7 +69,7 @@ interface FavoritesPageProps {
   setActiveTab?: (tab: 'today' | 'month' | 'report' | 'favorites') => void;
 }
 
-export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesPageProps) {
+export default function FavoritesPage({ onSelectDate: _onSelectDate, setActiveTab: _setActiveTab }: FavoritesPageProps) {
   const [favRecords, setFavRecords] = useState<FoodRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -82,14 +81,14 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
     fetchFavs();
   }, []);
 
-  // 扭蛋机相关状态与数据推荐算法
+  // 扭蛋机相关状态
   const [showGashapon, setShowGashapon] = useState(false);
-  const [gashaponState, setGashaponState] = useState<'ready' | 'shaking' | 'revealed' | 'show-all'>('ready');
+  const [gashaponState, setGashaponState] = useState<'ready' | 'shaking' | 'revealed'>('ready');
   const [candidates, setCandidates] = useState<FoodRecord[]>([]);
   const [drawnHistory, setDrawnHistory] = useState<FoodRecord[]>([]);
   const [currentSelection, setCurrentSelection] = useState<FoodRecord | null>(null);
 
-  // 1. 获取近30天内符合推荐标准的食物作为候选池
+  // 1. 获取近30天内符合推荐标准的食物候选池
   useEffect(() => {
     const fetchCandidates = async () => {
       const allRecords = await getAllRecords();
@@ -111,19 +110,17 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
         }
       });
 
-      // 过滤掉最近 5 天内吃过的食物（即最新时间戳距离现在 < 5天）
+      // 过滤掉最近 5 天内吃过的食物
       let validCandidates = Object.values(foodGroups).filter(r => {
         return (now - r.timestamp) >= fiveDaysMs;
       });
 
-      // 【第一重兜底】：如果在最近 5-30 天内没有评分 >=3 且未吃过的记录
-      // 放宽限制，只要求最近 30 天内且评分 >= 3，不排除最近 5 天吃的
+      // 第一重错开最近5天的兜底
       if (validCandidates.length === 0) {
         validCandidates = Object.values(foodGroups);
       }
 
-      // 【第二重兜底】：如果依然为空（说明最近 30 天内没有记录或评分全部 <3）
-      // 那么使用全历史记录中所有评分 >=3 且包含抠图贴纸（或整体记录）的记录
+      // 第二重所有历史高分兜底
       if (validCandidates.length === 0) {
         const allFoodGroups: { [name: string]: FoodRecord } = {};
         allRecords.filter(r => r.rating >= 3).forEach(r => {
@@ -135,8 +132,7 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
         validCandidates = Object.values(allFoodGroups);
       }
 
-      // 【第三重兜底】：如果数据库彻底为空（全新账户测试）
-      // 采用系统静态默认推荐贴纸池，确保测试和使用 100% 可用且可顺利玩耍
+      // 第三重内置贴纸兜底
       if (validCandidates.length === 0) {
         const mockStickers = [
           {
@@ -195,67 +191,44 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
     }
   }, [showGashapon]);
 
-  // 2. 触发扭蛋抽取事件
+  // 2. 摇一摇抽签逻辑
   const triggerDraw = () => {
     if (candidates.length === 0) return;
     setGashaponState('shaking');
 
-    // 过滤掉当前会话中已经抽出来的食物
-    let available = candidates.filter(
-      c => !drawnHistory.some(h => h.foodName === c.foodName)
-    );
-    // 兜底逻辑：若候选池抽空了则直接从完整候选池中抽取
-    if (available.length === 0) {
-      available = candidates;
-    }
-
-    // 随机抽选一个
-    const randomIndex = Math.floor(Math.random() * available.length);
-    const chosen = available[randomIndex];
-
-    // 播放 1.2 秒的扭动与震动动画，然后进入显示页面
     setTimeout(() => {
-      setDrawnHistory(prev => [...prev, chosen]);
-      setCurrentSelection(chosen);
+      const drawnNames = drawnHistory.map(r => r.foodName.trim());
+      let available = candidates.filter(c => !drawnNames.includes(c.foodName.trim()));
+
+      if (available.length === 0) {
+        available = candidates;
+      }
+
+      const selected = available[Math.floor(Math.random() * available.length)];
+      setDrawnHistory(prev => [...prev, selected]);
+      setCurrentSelection(selected);
       setGashaponState('revealed');
     }, 1200);
   };
 
-  // 3. 处理“换一个”点击事件
   const handleNextDraw = () => {
-    // 如果已经抽了 3 个（当前在 4/4 状态），再点击“换一个”将自动抽出第 4 个，并跳转到汇总页面
-    if (drawnHistory.length === 3) {
-      let available = candidates.filter(
-        c => !drawnHistory.some(h => h.foodName === c.foodName)
-      );
-      if (available.length === 0) available = candidates;
-
-      const randomIndex = Math.floor(Math.random() * available.length);
-      const chosen = available[randomIndex];
-
-      setDrawnHistory(prev => [...prev, chosen]);
-      setGashaponState('show-all');
-    } else {
+    if (drawnHistory.length < 4) {
       triggerDraw();
     }
   };
 
-  // 4. 选择完成关闭弹窗
   const handleAccept = () => {
     setShowGashapon(false);
-    // 重置抽签状态
+    setGashaponState('ready');
     setDrawnHistory([]);
     setCurrentSelection(null);
-    setGashaponState('ready');
   };
 
-  // 5. 计算距离上次吃的天数
   const getDaysAgo = (timestamp: number) => {
     const diff = Date.now() - timestamp;
     return Math.floor(diff / (1000 * 60 * 60 * 24));
   };
 
-  // 搜索过滤逻辑
   const filteredFavs = favRecords.filter(r => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
@@ -272,7 +245,6 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
           我的收藏
         </h1>
 
-        {/* 极简无印风搜索框 - 线条图标风格 */}
         <div style={{ position: 'relative', width: '100%' }}>
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', color: '#8A857C' }}>
             <Search size={16} />
@@ -316,13 +288,14 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 6px 0', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             今天吃什么？ <Sparkles size={16} className="sparkle-animate" style={{ color: '#E57373' }} />
           </h2>
-          <p style={{ fontSize: '0.8rem', color: '#8A857C', margin: '0 0 16px 0', maxWidth: '80%' }}>不知道吃什么？摇一摇试试运气吧～</p>
+          <p style={{ fontSize: '0.8rem', color: '#8A857C', margin: '0 0 16px 0', maxWidth: '80%' }}>不知道吃什么？摇一摇扭蛋机试试运气吧～</p>
           <button 
             type="button"
             onClick={() => {
               setShowGashapon(true);
               setGashaponState('ready');
               setDrawnHistory([]);
+              setCurrentSelection(null);
             }}
             style={{ 
               background: 'var(--color-green)', 
@@ -337,10 +310,10 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
             }} 
             className="bouncy-hover"
           >
-            开始抽签
+            开始扭蛋
           </button>
         </div>
-        <div style={{ zIndex: 1, marginRight: '-10px', transform: 'scale(0.85)' }}>
+        <div style={{ zIndex: 1, marginRight: '-15px', transform: 'scale(0.85)' }}>
           <GashaponMachineSVG active={false} />
         </div>
       </div>
@@ -349,13 +322,13 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
       {showGashapon && (
         <div className="gashapon-overlay">
           <div style={{
-            width: '90%',
-            maxWidth: '420px',
-            background: '#FAF9F5',
+            width: '95%',
+            maxWidth: '360px',
+            background: '#FAF6F0',
             borderRadius: '24px',
             border: '1px solid var(--color-border)',
-            padding: '24px',
-            boxShadow: '0 10px 30px rgba(62, 58, 54, 0.15)',
+            padding: '24px 20px',
+            boxShadow: '0 10px 30px rgba(62, 58, 54, 0.12)',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
@@ -363,7 +336,7 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
             boxSizing: 'border-box'
           }}>
             {/* 顶部控制栏 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '12px' }}>
               <button 
                 onClick={handleAccept}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A857C', display: 'flex', alignItems: 'center', padding: 0 }}
@@ -372,30 +345,36 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                 <ArrowLeft size={20} />
               </button>
               <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#8A857C', background: '#F2EFE7', padding: '3px 10px', borderRadius: '12px' }}>
-                {gashaponState === 'show-all' ? '本次推荐' : `${drawnHistory.length + 1}/4`}
+                {gashaponState === 'show-all' ? '本次推荐' : '扭蛋中'}
               </span>
             </div>
 
-            {/* 1. 准备/晃动状态面 */}
+            {/* 1. 准备/晃动状态 */}
             {(gashaponState === 'ready' || gashaponState === 'shaking') && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px 0' }}>
-                <GashaponMachineSVG active={gashaponState === 'shaking'} />
-                
-                {/* 扭蛋掉落轨迹 */}
-                {gashaponState === 'shaking' && (
-                  <div className="egg-falling" style={{
-                    width: '32px', height: '32px', borderRadius: '50%',
-                    background: ['#E57373', '#8B7D6C', '#FFF'][Math.floor(Math.random() * 3)],
-                    border: '2px solid #3E3A36',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                    marginTop: '-24px',
-                    zIndex: 20
-                  }} />
-                )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', boxSizing: 'border-box', position: 'relative' }}>
+                <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 'bold', margin: '0 0 6px 0', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                    今天吃什么？
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: '#8A857C', margin: 0 }}>摇一摇，扭出今日美味灵感 🎁</p>
+                </div>
 
-                <div style={{ textAlign: 'center' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: '0 0 6px 0', color: 'var(--color-text)' }}>摇一摇</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#8A857C', margin: 0 }}>抽出今天的灵感美食吧✨</p>
+                <div style={{ position: 'relative', width: '200px', height: '230px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <GashaponMachineSVG active={gashaponState === 'shaking'} />
+                  
+                  {/* 扭蛋球下坠动效 */}
+                  {gashaponState === 'shaking' && (
+                    <div className="egg-falling-active" style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #FFF 0%, #E57373 100%)',
+                      border: '2.5px solid #3E3A36',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                      marginTop: '-15px',
+                      zIndex: 20
+                    }} />
+                  )}
                 </div>
 
                 {gashaponState === 'ready' && (
@@ -407,40 +386,33 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                       color: '#FFF', border: 'none', borderRadius: '20px',
                       padding: '10px 32px', fontSize: '0.85rem', fontWeight: 'bold',
                       cursor: candidates.length === 0 ? 'not-allowed' : 'pointer',
-                      marginTop: '10px'
+                      marginTop: '12px',
+                      boxShadow: '0 2px 6px rgba(139, 125, 108, 0.2)'
                     }}
                     className="bouncy-hover"
                   >
-                    {candidates.length === 0 ? '无可抽取美味' : '摇动旋钮'}
+                    {candidates.length === 0 ? '无可推荐美味' : '摇动旋钮'}
                   </button>
                 )}
-                
-                <span style={{ fontSize: '0.65rem', color: '#8A857C', marginTop: '10px' }}>
-                  今日已推荐 {drawnHistory.length}/4 次
-                </span>
               </div>
             )}
 
-            {/* 2. 抽中结果单卡状态面 */}
+            {/* 2. 单个推荐卡片状态 (Transparent style) */}
             {gashaponState === 'revealed' && currentSelection && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '10px 0' }}>
-                {/* 贴纸展示 */}
                 <div style={{
                   width: '180px', height: '180px',
-                  background: '#FFF', border: '2px solid #FFF',
-                  borderRadius: '16px',
-                  boxShadow: '0 6px 20px rgba(62, 58, 54, 0.08)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative', marginBottom: '24px'
+                  position: 'relative', marginBottom: '16px'
                 }}>
-                  {/* 好久没吃标记 */}
                   {getDaysAgo(currentSelection.timestamp) >= 20 && (
                     <span style={{
                       position: 'absolute', top: '10px', right: '10px',
                       background: '#FFF', border: '1px solid #FF9800',
                       color: '#FF9800', fontSize: '0.55rem', fontWeight: 'bold',
                       padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '2px',
-                      boxShadow: '0 1px 3px rgba(255,152,0,0.1)'
+                      boxShadow: '0 1px 3px rgba(255,152,0,0.1)',
+                      zIndex: 10
                     }}>
                       🔥 好久没吃了
                     </span>
@@ -452,26 +424,35 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                         <img 
                           src={imgUrl} 
                           alt={currentSelection.foodName} 
-                          style={{ width: '80%', height: '80%', objectFit: 'contain', filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.1))' }} 
+                          style={{ width: '80%', height: '80%', objectFit: 'contain', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.15))' }} 
                         />
                       );
                     })()
                   ) : (
                     <div style={{
-                      width: '60px', height: '60px', borderRadius: '50%',
-                      background: '#FAF9F5', border: '1.5px dashed var(--color-border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A857C'
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #FFF9E6 0%, #FFECB3 100%)',
+                      border: '3.5px solid #FFF',
+                      boxShadow: '0 4px 10px rgba(62,58,54,0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#4E3629',
+                      gap: '2px'
                     }}>
-                      <Utensils size={28} />
+                      <Utensils size={24} style={{ opacity: 0.8 }} />
+                      <span style={{ fontSize: '0.45rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>DELICIOUS</span>
                     </div>
                   )}
                 </div>
 
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 'bold', margin: '0 0 6px 0', color: 'var(--color-text)' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 'bold', margin: '0 0 6px 0', color: '#4E3629', textShadow: '1px 1px 0px #FAF6F0' }}>
                   {currentSelection.foodName}
                 </h3>
 
-                {/* 评分心心 */}
                 <div style={{ display: 'flex', gap: '3px', marginBottom: '14px' }}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Heart 
@@ -480,28 +461,27 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                       color="var(--color-pink)" 
                     />
                   ))}
-                  <span style={{ fontSize: '0.75rem', color: '#8A857C', marginLeft: '6px', fontWeight: 'bold' }}>
-                    {currentSelection.rating.toFixed(1)}
-                  </span>
                 </div>
 
                 <p style={{ fontSize: '0.8rem', color: '#8A857C', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Clock size={12} /> 距离上次吃：{getDaysAgo(currentSelection.timestamp)} 天前
                 </p>
 
-                {/* 控制按钮 */}
+                {/* 底部按键 */}
                 <div style={{ display: 'flex', gap: '16px', width: '100%' }}>
-                  <button 
-                    onClick={handleNextDraw}
-                    style={{
-                      flex: 1, background: '#FAF9F5', border: '1px solid var(--color-border)',
-                      borderRadius: '20px', padding: '10px 0', fontSize: '0.85rem',
-                      fontWeight: 'bold', color: 'var(--color-text)', cursor: 'pointer'
-                    }}
-                    className="bouncy-hover"
-                  >
-                    换一个
-                  </button>
+                  {drawnHistory.length < 4 && (
+                    <button 
+                      onClick={handleNextDraw}
+                      style={{
+                        flex: 1, background: '#FAF9F5', border: '1px solid var(--color-border)',
+                        borderRadius: '20px', padding: '10px 0', fontSize: '0.85rem',
+                        fontWeight: 'bold', color: 'var(--color-text)', cursor: 'pointer'
+                      }}
+                      className="bouncy-hover"
+                    >
+                      换一个
+                    </button>
+                  )}
                   <button 
                     onClick={handleAccept}
                     style={{
@@ -513,92 +493,6 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                   >
                     就它了
                   </button>
-                </div>
-              </div>
-            )}
-
-            {/* 3. 终极四选一汇总状态面 */}
-            {gashaponState === 'show-all' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 6px 0', color: '#E57373', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-                    ✨ 本次推荐 ✨
-                  </h3>
-                  <p style={{ fontSize: '0.75rem', color: '#8A857C', margin: 0 }}>本次推荐已用完啦~ 挑一个你最想吃的吧！</p>
-                </div>
-
-                {/* 四个卡片网格排布 */}
-                <div style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
-                  width: '100%', marginBottom: '24px', boxSizing: 'border-box'
-                }}>
-                  {drawnHistory.map((record) => {
-                    const isOld = getDaysAgo(record.timestamp) >= 20;
-                    return (
-                      <div 
-                        key={record.id}
-                        onClick={() => {
-                          // 点击任意一张完成选择并关闭
-                          handleAccept();
-                        }}
-                        style={{
-                          background: '#FAF9F5', border: '1px solid var(--color-border)',
-                          borderRadius: '12px', padding: '10px', display: 'flex',
-                          flexDirection: 'column', alignItems: 'center', gap: '6px',
-                          cursor: 'pointer', position: 'relative', boxShadow: '0 2px 8px rgba(62,58,54,0.02)'
-                        }}
-                        className="bouncy-hover"
-                      >
-                        {isOld && (
-                          <span style={{
-                            position: 'absolute', top: '4px', right: '4px',
-                            background: '#FFF', border: '1px solid #FF9800',
-                            color: '#FF9800', fontSize: '0.45rem', fontWeight: 'bold',
-                            padding: '1px 3px', borderRadius: '3px'
-                          }}>
-                            💡 好久没吃
-                          </span>
-                        )}
-                        <div style={{ width: '70px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {record.imageBlob ? (
-                            (() => {
-                              const imgUrl = URL.createObjectURL(record.imageBlob);
-                              return (
-                                <img 
-                                  src={imgUrl} 
-                                  alt={record.foodName} 
-                                  style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.06))' }} 
-                                />
-                              );
-                            })()
-                          ) : (
-                            <div style={{
-                              width: '36px', height: '36px', borderRadius: '50%',
-                              background: '#FAF9F5', border: '1px dashed var(--color-border)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A857C'
-                            }}>
-                              <Utensils size={18} />
-                            </div>
-                          )}
-                        </div>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: 'bold', margin: '4px 0 2px 0', color: 'var(--color-text)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
-                          {record.foodName}
-                        </h4>
-                        <div style={{ display: 'flex', gap: '1px', transform: 'scale(0.85)' }}>
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Heart 
-                              key={s} size={8} 
-                              fill={s <= record.rating ? 'var(--color-pink)' : 'none'} 
-                              color="var(--color-pink)" 
-                            />
-                          ))}
-                        </div>
-                        <span style={{ fontSize: '0.6rem', color: '#8A857C' }}>
-                          {getDaysAgo(record.timestamp)}天前吃过
-                        </span>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
             )}
@@ -627,11 +521,26 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
             const timeString = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日 ${dateObj.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
 
             return (
-              <div key={record.id} style={{ 
-                background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '12px',
-                padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px',
-                boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)'
-              }}>
+              <div 
+                key={record.id} 
+                onClick={() => {
+                  if (_onSelectDate) {
+                    _onSelectDate(new Date(record.timestamp));
+                  }
+                }}
+                style={{ 
+                  background: '#FAF9F5', 
+                  border: '1px solid var(--color-border)', 
+                  borderRadius: '12px',
+                  padding: '12px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)',
+                  cursor: _onSelectDate ? 'pointer' : 'default'
+                }}
+                className="bouncy-hover"
+              >
                 <div style={{ height: '120px', background: 'none', overflow: 'visible', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {imgUrl ? (
                     <img src={imgUrl} alt={record.foodName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />

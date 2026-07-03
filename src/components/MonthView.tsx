@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type FoodRecord, getAllRecords } from '../db';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 
 interface MonthViewProps {
   onSelectDate: (date: Date) => void;
@@ -9,6 +9,11 @@ interface MonthViewProps {
 export default function MonthView({ onSelectDate }: MonthViewProps) {
   const [records, setRecords] = useState<FoodRecord[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // 刷新状态与弹性动画触发 Key
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [randomParams, setRandomParams] = useState<{ rot: number; ox: number; oy: number }[]>([]);
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -26,6 +31,55 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   // 生成周一作为起始日的日历网格
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
+
+  // 1. 过滤出本月有抠图贴纸的全部记录
+  const currentMonthRecords = records.filter(r => {
+    try {
+      const recordDate = new Date(r.timestamp);
+      return recordDate.getFullYear() === year && 
+             recordDate.getMonth() === month && 
+             !!r.imageBlob;
+    } catch {
+      return false;
+    }
+  });
+
+  // 2. 排序并截取前30张评分最高且最新的贴纸
+  const topStickers = [...currentMonthRecords]
+    .sort((a, b) => {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return b.timestamp - a.timestamp;
+    })
+    .slice(0, 30);
+
+  // 3. 当贴纸列表或月份变化时，初始化贴纸的偏转量与旋转角
+  useEffect(() => {
+    const params = Array.from({ length: topStickers.length }, () => ({
+      rot: Math.floor(Math.random() * 21) - 10,  // -10 到 +10 度
+      ox: Math.floor(Math.random() * 11) - 5,    // -5 到 +5 像素偏移
+      oy: Math.floor(Math.random() * 11) - 5     // -5 到 +5 像素偏移
+    }));
+    setRandomParams(params);
+  }, [topStickers.length, currentMonth]);
+
+  // 4. 处理点击刷新事件
+  const handleRefresh = () => {
+    if (isSpinning) return;
+    setIsSpinning(true);
+
+    // 重新生成随机参数以产生位置歪斜的变化
+    const params = Array.from({ length: topStickers.length }, () => ({
+      rot: Math.floor(Math.random() * 21) - 10,
+      ox: Math.floor(Math.random() * 11) - 5,
+      oy: Math.floor(Math.random() * 11) - 5
+    }));
+    setRandomParams(params);
+    setRefreshKey(prev => prev + 1);
+
+    setTimeout(() => {
+      setIsSpinning(false);
+    }, 500);
+  };
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday, 1 is Monday...
   const totalDays = new Date(year, month + 1, 0).getDate();
 
@@ -215,6 +269,103 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F2EFE7', border: '1px dashed var(--color-border)' }} /> 无记录
         </span>
       </div>
+
+      {/* 本月 Sticker 墙 */}
+      {topStickers.length > 0 && (
+        <div style={{ 
+          marginTop: '24px', 
+          background: '#FAF9F5', 
+          border: '1px solid var(--color-border)', 
+          borderRadius: '16px', 
+          padding: '20px 16px',
+          boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)'
+        }}>
+          {/* 标题栏与刷新图标 */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <h2 style={{ 
+              fontSize: '1.1rem', 
+              fontWeight: 'bold', 
+              color: 'var(--color-text)', 
+              margin: 0, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px' 
+            }}>
+              本月 Sticker 墙 <span style={{ color: '#E57373', fontSize: '0.9rem' }}>✦</span>
+            </h2>
+            <button 
+              onClick={handleRefresh}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                color: '#8A857C', 
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className="bouncy-hover"
+              title="刷新贴纸排版"
+            >
+              <RotateCw size={18} className={isSpinning ? 'icon-spinning' : ''} />
+            </button>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: '#8A857C', margin: '0 0 16px 0' }}>这个月记录的美味！</p>
+
+          {/* 贴纸流式排版列表 */}
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            justifyContent: 'center', 
+            gap: '14px 10px', 
+            padding: '8px 4px',
+            overflow: 'hidden'
+          }}>
+            {topStickers.map((record, index) => {
+              const imgUrl = record.imageBlob ? URL.createObjectURL(record.imageBlob) : null;
+              if (!imgUrl) return null;
+
+              const params = randomParams[index] || { rot: 0, ox: 0, oy: 0 };
+
+              return (
+                <div
+                  key={`sticker-${refreshKey}-${record.id}`}
+                  className="sticker-animate"
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    // 传递自定义 CSS 变量控制旋转和偏移
+                    // @ts-ignore
+                    '--rot': `${params.rot}deg`,
+                    '--ox': `${params.ox}px`,
+                    '--oy': `${params.oy}px`,
+                    animationDelay: `${index * 25}ms`,
+                    filter: 'drop-shadow(0 3px 6px rgba(62, 58, 54, 0.16))',
+                    transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                  }}
+                  onClick={() => onSelectDate(new Date(record.timestamp))}
+                  title={`${record.foodName} (评分: ${record.rating}★)`}
+                >
+                  <img 
+                    src={imgUrl} 
+                    alt={record.foodName} 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain'
+                    }} 
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -47,7 +47,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
-      alert("抠图失败调试信息:\n" + (err?.message || err) + "\nStack: " + (err?.stack || "无"));
       // 兜底方案：使用原始大图，做聚光灯模糊兜底
       const originalUrl = URL.createObjectURL(file);
       drawSpotlightFood(originalUrl, null);

@@ -8,6 +8,11 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@imgly/background-removal']
   },
+  build: {
+    rollupOptions: {
+      external: ['onnxruntime-web/webgpu', 'onnxruntime-web']
+    }
+  },
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

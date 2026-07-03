@@ -43,7 +43,7 @@ const resizeImage = (file: File, maxSide: number): Promise<Blob> => {
         } else {
           resolve(file);
         }
-      }, 'image/jpeg', 0.85);
+      }, 'image/png');
     };
     img.onerror = (err) => reject(err);
   });
@@ -67,6 +67,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [elapsedTime, setElapsedTime] = useState(0);
   const [imgInfo, setImgInfo] = useState('');
   const [diagInfo, setDiagInfo] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +78,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     setProcessing(true);
     setElapsedTime(0);
+    setErrorMsg('');
     setProgressText('正在压缩图片...');
 
     // 测定系统环境与隔离状态
@@ -86,7 +88,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     let compressedFile: Blob;
     try {
-      compressedFile = await resizeImage(file, 1024);
+      compressedFile = await resizeImage(file, 1600);
     } catch (e) {
       console.warn("图片压缩失败，使用原图进行处理", e);
       compressedFile = file;
@@ -124,6 +126,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
       clearInterval(timer);
+      setErrorMsg(err?.message || String(err));
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
       // 兜底方案：使用原始大图，做聚光灯模糊兜底
       const originalUrl = URL.createObjectURL(compressedFile);
@@ -412,6 +415,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
                   }}>
                     <div>⚡ 运行环境: {diagInfo}</div>
                     <div>🖼️ 图片规格: {imgInfo || '检测中...'}</div>
+                    {errorMsg && <div style={{ color: '#FF5722', fontWeight: 'bold', marginTop: '2px', borderTop: '1px dashed #FFCDD2', paddingTop: '2px' }}>❌ 错误: {errorMsg}</div>}
                     <div style={{ color: '#8A857C', fontSize: '0.58rem', marginTop: '2px', borderTop: '1px dashed #E5DDCF', paddingTop: '2px' }}>
                       ℹ️ 首次运行需自动拉取 88MB 模型缓存，超时（或单线程运行超过1分钟）将自动切换为虚线圈原图兜底。
                     </div>

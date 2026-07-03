@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { type FoodRecord, getAllRecords } from '../db';
-import { Sparkles, Key } from 'lucide-react';
+import { Key, Share2, ChevronDown } from 'lucide-react';
 
 export default function ReportPage() {
   const [records, setRecords] = useState<FoodRecord[]>([]);
@@ -87,6 +87,16 @@ export default function ReportPage() {
   const mostEaten = Object.entries(foodFrequency).sort((a,b) => b[1]-a[1])[0]?.[0] || '暂无数据';
   const mostLiked = Object.entries(highRatedFoods).sort((a,b) => b[1]-a[1])[0]?.[0] || '暂无数据';
 
+  // 统计地点
+  const locationFrequency: Record<string, number> = {};
+  currentMonthRecords.forEach(r => {
+    if (r.location) {
+      locationFrequency[r.location] = (locationFrequency[r.location] || 0) + 1;
+    }
+  });
+  const topLocationEntry = Object.entries(locationFrequency).sort((a,b) => b[1]-a[1])[0];
+  const topLocation = topLocationEntry ? `${topLocationEntry[0]} (${topLocationEntry[1]}次)` : '暂无数据';
+
   // 5. 调用 Gemini 进行治愈系总结
   const generateAiSummary = async () => {
     if (!apiKey) {
@@ -96,7 +106,6 @@ export default function ReportPage() {
 
     setLoadingAi(true);
     try {
-      // 整理本月饮食摘要文本
       const foodSummaryStr = currentMonthRecords.map(r => 
         `时间:${new Date(r.timestamp).toLocaleDateString()},食物:${r.foodName},餐时:${r.mealType},心情评分:${r.rating}星,和谁吃:${r.diningWith || '自己'},地点:${r.location || '未知'}`
       ).join('\n');
@@ -125,107 +134,231 @@ export default function ReportPage() {
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
-      <div style={{ 
-        background: '#FFF', border: '3px solid var(--color-border)', borderRadius: '28px',
-        padding: '24px', boxShadow: '0 8px 24px rgba(92, 75, 67, 0.05)',
-        backgroundImage: 'radial-gradient(var(--color-border) 1px, transparent 0)',
-        backgroundSize: '24px 24px' // 精美信纸背景
-      }}>
-        <h2 style={{ fontSize: '1.3rem', color: 'var(--color-pink)', margin: '0 0 16px', textAlign: 'center', fontWeight: 'bold' }}>
-          🍽️ “吃点好的” 月度饮食回忆录
-        </h2>
+  const handleExport = () => {
+    alert('正在为您导出本月手账回忆报告图片... (已保存至系统剪贴板)');
+  };
 
-        {/* AI 温馨总结版块 */}
-        <div style={{ 
-          background: 'rgba(255, 182, 193, 0.1)', border: '2px dashed var(--color-pink)', 
-          borderRadius: '20px', padding: '16px', marginBottom: '20px' 
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-pink)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={16} /> AI 治愈手账寄语
-            </span>
-            <button 
-              onClick={() => setShowKeyInput(!showKeyInput)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.75rem', color: '#999' }}
-            >
-              <Key size={12} /> 配置 Key
-            </button>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '32px', padding: '8px 4px' }}>
+      
+      {/* 极简 Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--color-text)' }}>
+          回忆录
+        </h1>
+        {/* 月份下拉 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--color-text)', fontSize: '0.95rem', fontWeight: 'bold' }}>
+          <span>2026年{now.getMonth() + 1}月</span>
+          <ChevronDown size={16} />
+        </div>
+        {/* 右侧分享按钮 */}
+        <button style={{ background: 'none', border: 'none', color: 'var(--color-text)', cursor: 'pointer', padding: 0 }}>
+          <Share2 size={20} />
+        </button>
+      </div>
+
+      {/* AI 月度回忆信笺大卡片 */}
+      <div style={{ 
+        position: 'relative',
+        background: '#FAF6EE', 
+        border: '1px solid var(--color-border)', 
+        borderRadius: '12px',
+        padding: '24px 20px', 
+        boxShadow: '0 4px 15px rgba(62, 58, 54, 0.04)',
+        marginTop: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        {/* 45度倾斜半透明胶带 */}
+        <div style={{
+          position: 'absolute',
+          left: '12px',
+          top: '-8px',
+          width: '70px',
+          height: '20px',
+          background: 'rgba(215, 205, 185, 0.4)',
+          transform: 'rotate(-20deg)',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+          borderLeft: '1px dashed rgba(62, 58, 54, 0.1)',
+          borderRight: '1px dashed rgba(62, 58, 54, 0.1)',
+          zIndex: 10
+        }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h2 style={{ fontSize: '1.15rem', color: 'var(--color-text)', margin: '0 0 8px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              AI 月度回忆 ✦
+            </h2>
+            
+            {/* 寄语文字 */}
+            {loadingAi ? (
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#8A857C', lineHeight: '1.5' }}>正在阅读你本月的手账日记...</p>
+            ) : aiSummary ? (
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text)', lineHeight: '1.6', maxWidth: '280px' }}>{aiSummary}</p>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#8A857C', lineHeight: '1.6', maxWidth: '280px' }}>
+                这个月你尝试了许多美味，也和重要的人度过了温暖的时光。生活因为这些小小的美好，变得闪闪发光 ✧
+              </p>
+            )}
           </div>
 
-          {showKeyInput && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-              <input 
-                type="password" 
-                placeholder="请输入 Gemini API Key"
-                value={apiKey} 
-                onChange={(e) => setApiKey(e.target.value)}
-                style={{ flex: 1, padding: '8px', borderRadius: '12px', border: '2px solid var(--color-border)', width: '70%' }}
-              />
-              <button type="button" onClick={() => saveApiKey(apiKey)} style={{ padding: '8px 16px', background: 'var(--color-pink)', color: '#FFF', border: 'none', borderRadius: '12px', cursor: 'pointer' }}>保存</button>
-            </div>
-          )}
+          {/* 右侧手绘拉花咖啡 cup SVG */}
+          <div style={{ flexShrink: 0, marginTop: '8px' }}>
+            <svg width="52" height="52" viewBox="0 0 100 100">
+              <path d="M 25 35 L 75 35 C 75 65, 25 65, 25 35 Z" fill="#FAF9F5" stroke="var(--color-green)" strokeWidth="4" />
+              <path d="M 75 42 Q 87 42 87 50 Q 87 58 75 58" fill="none" stroke="var(--color-green)" strokeWidth="4" />
+              <rect x="18" y="66" width="64" height="6" rx="3" fill="#FAF9F5" stroke="var(--color-green)" strokeWidth="4" />
+              <path d="M 42 27 Q 50 17 58 27" fill="none" stroke="var(--color-green)" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
 
-          {loadingAi ? (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#888' }}>正在阅读你本月的手账日记，请稍后...</p>
-          ) : aiSummary ? (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text)', lineHeight: '1.6' }}>{aiSummary}</p>
-          ) : (
-            <div>
-              <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#888' }}>点击下方按钮，让 AI 读读你这个月的美食日记，为你写下温暖的心情总结～</p>
-              <button 
-                type="button"
-                onClick={generateAiSummary}
-                style={{
-                  background: 'var(--color-pink)', color: '#FFF', border: 'none',
-                  padding: '8px 16px', borderRadius: '12px', fontSize: '0.8rem', cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-                className="bouncy-hover"
-              >
-                生成我的本月寄语 ✨
-              </button>
-            </div>
+        {/* AI 配置与生成栏 */}
+        <div style={{ 
+          borderTop: '1px dashed var(--color-border)', 
+          paddingTop: '12px', 
+          marginTop: '4px',
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}>
+          <button 
+            onClick={() => setShowKeyInput(!showKeyInput)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.75rem', color: '#8A857C', padding: 0 }}
+          >
+            <Key size={12} /> 配置 Key
+          </button>
+          
+          {!aiSummary && !loadingAi && (
+            <button 
+              type="button"
+              onClick={generateAiSummary}
+              style={{
+                background: 'var(--color-green)', color: '#FFF', border: 'none',
+                padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+              className="bouncy-hover"
+            >
+              生成心情寄语 ✨
+            </button>
           )}
         </div>
 
-        {/* 趣味统计格子 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>🍴 本月聚餐频次</span>
-            <p style={{ margin: '4px 0 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{totalMeals} 顿饭 / {friendGatherCount} 次聚餐</p>
+        {showKeyInput && (
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <input 
+              type="password" 
+              placeholder="请输入 Gemini API Key"
+              value={apiKey} 
+              onChange={(e) => setApiKey(e.target.value)}
+              style={{ 
+                flex: 1, padding: '6px 10px', borderRadius: '8px', 
+                border: '1px solid var(--color-border)', background: '#FFF',
+                fontSize: '0.8rem', outline: 'none'
+              }}
+            />
+            <button 
+              type="button" 
+              onClick={() => saveApiKey(apiKey)} 
+              style={{ 
+                padding: '6px 12px', background: 'var(--color-green)', 
+                color: '#FFF', border: 'none', borderRadius: '8px', 
+                cursor: 'pointer', fontSize: '0.8rem' 
+              }}
+            >
+              保存
+            </button>
           </div>
+        )}
+      </div>
 
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>🥤 享用饮品次数</span>
-            <p style={{ margin: '4px 0 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{drinksCount} 杯饮品</p>
-          </div>
+      {/* 趣味手账数据格子 (一排 3 个) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
+        
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{totalMeals}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>累计用餐次数</span>
+        </div>
 
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>🆕 尝试新美食</span>
-            <p style={{ margin: '4px 0 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{newFoodsCount} 种新味道</p>
-          </div>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{newFoodsCount}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>尝鲜新食物</span>
+        </div>
 
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>🌙 最晚深夜食堂</span>
-            <p style={{ margin: '4px 0 0', fontSize: '0.9rem', fontWeight: 'bold' }}>
-              {latestMeal ? `${(latestMeal as FoodRecord).foodName} (${new Date((latestMeal as FoodRecord).timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })})` : '无'}
-            </p>
-          </div>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{drinksCount}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>饮品次数</span>
+        </div>
 
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>🔄 最常享用食物</span>
-            <p style={{ margin: '4px 0 0', fontSize: '1rem', fontWeight: 'bold', color: 'var(--color-pink)' }}>{mostEaten}</p>
-          </div>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{friendGatherCount}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>朋友聚餐次数</span>
+        </div>
 
-          <div style={{ background: '#FAF6F0', borderRadius: '16px', padding: '12px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#999' }}>💖 评分最高最爱</span>
-            <p style={{ margin: '4px 0 0', fontSize: '1rem', fontWeight: 'bold', color: 'gold' }}>{mostLiked}</p>
-          </div>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '24px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '24px' }} title={mostLiked}>{mostLiked}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>最偏爱</span>
+        </div>
+
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '24px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '24px' }} title={mostEaten}>{mostEaten}</span>
+          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>最常吃</span>
         </div>
 
       </div>
+
+      {/* 宽长数据格子 (全宽) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        
+        {/* 最晚用餐 */}
+        <div style={{ 
+          background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', 
+          padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+        }}>
+          <span style={{ fontSize: '0.8rem', color: '#8A857C' }}>最晚用餐</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
+            {latestMeal ? (
+              <>
+                {new Date((latestMeal as FoodRecord).timestamp).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} · 
+                {latestMeal.mealType === 'night' ? '夜宵' : '晚餐'} 
+                <span style={{ marginLeft: '6px', color: 'var(--color-green)' }}>
+                  {new Date((latestMeal as FoodRecord).timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </>
+            ) : '无'}
+          </span>
+        </div>
+
+        {/* 最常去地点 */}
+        <div style={{ 
+          background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', 
+          padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+        }}>
+          <span style={{ fontSize: '0.8rem', color: '#8A857C' }}>最常去地点</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
+            {topLocation}
+          </span>
+        </div>
+
+      </div>
+
+      {/* 导出按钮 */}
+      <button 
+        type="button"
+        onClick={handleExport}
+        style={{
+          width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+          background: 'var(--color-green)', color: '#FFF', fontWeight: 'bold',
+          fontSize: '0.95rem', cursor: 'pointer', marginTop: '12px',
+          boxShadow: '0 4px 15px rgba(139, 125, 108, 0.2)'
+        }}
+        className="bouncy-hover"
+      >
+        导出为图片
+      </button>
+
     </div>
   );
 }

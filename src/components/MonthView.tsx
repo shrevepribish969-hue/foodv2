@@ -23,18 +23,20 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
     setCurrentMonth(nextMonth);
   };
 
-  // 生成日历格子
+  // 生成周一作为起始日的日历网格
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
-  const firstDayIndex = new Date(year, month, 1).getDay();
+  const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday, 1 is Monday...
   const totalDays = new Date(year, month + 1, 0).getDate();
 
+  const emptyDays = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
   const daysArray: (Date | null)[] = [];
-  // 填充月初空白
-  for (let i = 0; i < firstDayIndex; i++) {
+  
+  // 填充月初空白格子
+  for (let i = 0; i < emptyDays; i++) {
     daysArray.push(null);
   }
-  // 填充正常日期
+  // 填充日期
   for (let d = 1; d <= totalDays; d++) {
     daysArray.push(new Date(year, month, d));
   }
@@ -51,28 +53,52 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   };
 
   return (
-    <div style={{ background: '#FFF', border: '2px solid var(--color-border)', borderRadius: '28px', padding: '16px', boxShadow: '0 6px 18px rgba(92, 75, 67, 0.04)' }}>
+    <div style={{ 
+      background: '#FAF9F5', border: '1px solid var(--color-border)', 
+      borderRadius: '16px', padding: '20px 8px', 
+      boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)' 
+    }}>
       {/* 顶部月份导航 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <button onClick={() => changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ChevronLeft /></button>
-        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-          {currentMonth.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long' })}
-        </span>
-        <button onClick={() => changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ChevronRight /></button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--color-text)', margin: 0, letterSpacing: '0.5px' }}>
+          {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月
+        </h1>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={() => changeMonth(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A857C', padding: 0 }} className="bouncy-hover">
+            <ChevronLeft size={22} />
+          </button>
+          <button onClick={() => changeMonth(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A857C', padding: 0 }} className="bouncy-hover">
+            <ChevronRight size={22} />
+          </button>
+        </div>
       </div>
 
-      {/* 星期标头 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', color: '#999', marginBottom: '8px' }}>
-        {['日', '一', '二', '三', '四', '五', '六'].map(w => <div key={w}>{w}</div>)}
+      {/* 星期标头 (周一至周日) */}
+      <div style={{ 
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', 
+        textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', 
+        color: '#8A857C', marginBottom: '12px' 
+      }}>
+        {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(w => <div key={w}>{w}</div>)}
       </div>
 
-      {/* 日历网格贴纸墙 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+      {/* 垂直长药丸胶囊日历网格 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px 3px' }}>
         {daysArray.map((date, idx) => {
-          if (!date) return <div key={`empty-${idx}`} style={{ height: '70px' }} />;
+          if (!date) return <div key={`empty-${idx}`} style={{ height: '75px' }} />;
           
           const dayRecords = getDayRecords(date);
+          const hasRecord = dayRecords.length > 0;
           const isToday = new Date().toISOString().split('T')[0] === date.toISOString().split('T')[0];
+
+          // 挑选出喜爱度（rating 降序，isFavorited 降序，时间戳降序）最高的一顿饭
+          const bestRecord = [...dayRecords].sort((a, b) => {
+            if (b.rating !== a.rating) return b.rating - a.rating;
+            const aFav = a.isFavorited ? 1 : 0;
+            const bFav = b.isFavorited ? 1 : 0;
+            if (bFav !== aFav) return bFav - aFav;
+            return b.timestamp - a.timestamp;
+          })[0];
 
           return (
             <button 
@@ -80,32 +106,114 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
               type="button"
               onClick={() => onSelectDate(date)}
               style={{
-                height: '75px', background: isToday ? 'var(--color-yellow)' : '#FFFDF9',
-                border: isToday ? '2px solid var(--color-pink)' : '1px solid var(--color-border)',
-                borderRadius: '16px', display: 'flex', flexDirection: 'column', 
-                justifyContent: 'space-between', padding: '6px', cursor: 'pointer',
-                overflow: 'hidden', position: 'relative'
+                height: '75px', 
+                background: isToday ? 'var(--color-green)' : (hasRecord ? '#FAF9F5' : '#F2EFE7'),
+                border: hasRecord ? '1px solid var(--color-border)' : '1px dashed rgba(227, 223, 213, 0.6)',
+                borderRadius: '15px', // 微圆角
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                padding: '2px', 
+                cursor: 'pointer',
+                overflow: 'visible',
+                position: 'relative'
               }}
               className="bouncy-hover"
             >
-              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: isToday ? 'var(--color-pink)' : 'var(--color-text)' }}>
+              {/* 日期数字 - 绝对定位至左上角，精致排布 */}
+              <span style={{ 
+                position: 'absolute',
+                left: '6px',
+                top: '4px',
+                fontSize: '0.65rem', 
+                fontWeight: 'bold', 
+                color: isToday ? '#FFF' : 'rgba(62, 58, 54, 0.55)',
+                zIndex: 20
+              }}>
                 {date.getDate()}
               </span>
 
-              {/* 贴纸平铺层 */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', width: '100%', overflow: 'hidden', height: '36px', alignItems: 'center', justifyContent: 'center' }}>
-                {dayRecords.map((r) => {
-                  const imgUrl = r.imageBlob ? URL.createObjectURL(r.imageBlob) : null;
-                  return (
-                    <div key={r.id} style={{ width: '16px', height: '16px', borderRadius: '4px', overflow: 'hidden', background: '#EAEAEA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {imgUrl ? <img src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="small preview" /> : <span style={{ fontSize: '0.6rem' }}>🍙</span>}
-                    </div>
-                  );
-                })}
+              {/* 单张精美美食贴纸展现区 (默认保留高度，无色纯留白，极限放大至 40px) */}
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                marginTop: '12px',
+                position: 'relative' // 相对定位供 Badge 贴合
+              }}>
+                {bestRecord ? (
+                  (() => {
+                    const imgUrl = bestRecord.imageBlob ? URL.createObjectURL(bestRecord.imageBlob) : null;
+                    return (
+                      <>
+                        <div 
+                          style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            borderRadius: '6px', 
+                            overflow: 'visible', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            zIndex: 10
+                          }}
+                        >
+                          {imgUrl ? (
+                            <img src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="best preview" />
+                          ) : (
+                            <span style={{ fontSize: '1.25rem' }}>🍙</span>
+                          )}
+                        </div>
+
+                        {/* 多餐数字角标 - 定位在贴纸右上方并遮盖一部分，极具手账悬浮感 */}
+                        {dayRecords.length > 1 && (
+                          <span style={{
+                            position: 'absolute',
+                            right: '-3px',
+                            top: '-3px',
+                            width: '13px',
+                            height: '13px',
+                            borderRadius: '50%',
+                            background: isToday ? '#606A59' : '#FFF',
+                            border: isToday ? 'none' : '1px solid var(--color-border)',
+                            color: isToday ? '#FAF9F5' : '#8A857C',
+                            fontSize: '0.55rem',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 25,
+                            boxShadow: '0 1px 3px rgba(62,58,54,0.15)'
+                          }}>
+                            {dayRecords.length}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()
+                ) : (
+                  <div style={{ width: '40px', height: '40px' }} />
+                )}
               </div>
             </button>
           );
         })}
+      </div>
+
+      {/* 底部图例 */}
+      <div style={{ 
+        display: 'flex', gap: '16px', fontSize: '0.75rem', color: '#8A857C', 
+        marginTop: '20px', paddingLeft: '4px' 
+      }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'rgba(139, 125, 108, 0.2)', border: '1px solid var(--color-border)' }} /> 有记录
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F2EFE7', border: '1px dashed var(--color-border)' }} /> 无记录
+        </span>
       </div>
     </div>
   );

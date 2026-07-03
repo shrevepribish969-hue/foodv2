@@ -1,23 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Fredoka:wght@300..700&display=swap');
 
 :root {
-  --color-bg: #FFFDF6;      /* 暖奶油白 */
-  --color-pink: #FFB6C1;    /* 樱花粉 */
-  --color-green: #A8E6CF;   /* 薄荷绿 */
-  --color-yellow: #FFD3B6;  /* 香蕉黄 */
-  --color-text: #5C4B43;    /* 温暖深褐（替代纯黑） */
-  --color-border: #E8D3C5;  /* 柔和线条 */
-  --font-cute: 'ZCOOL KuaiLe', 'Fredoka', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-bg: #F5F2EA;      /* 暖和原木米色 */
+  --color-pink: #E57373;    /* 珊瑚粉红 (爱心用) */
+  --color-green: #8B7D6C;   /* MUJI 原木卡其色 */
+  --color-yellow: #FAF9F5;  /* 极简卡片淡米白 */
+  --color-text: #3E3A36;    /* 温暖极简木炭褐 */
+  --color-border: #E3DFD5;  /* 极精细原木色线条 */
+  --font-cute: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
   background-color: var(--color-bg);
-  background-image: 
-    linear-gradient(90deg, rgba(232, 211, 197, 0.2) 1px, transparent 1px),
-    linear-gradient(rgba(232, 211, 197, 0.2) 1px, transparent 1px);
-  background-size: 20px 20px; /* 手账网格背景 */
   color: var(--color-text);
   font-family: var(--font-cute);
 }

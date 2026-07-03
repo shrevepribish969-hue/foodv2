@@ -5,37 +5,62 @@ import { MapPin, Users, Heart, Clock, Search, Utensils, Sparkles, ArrowLeft, Rot
 function GashaponMachineSVG({ active }: { active: boolean }) {
   return (
     <svg 
-      width="140" 
-      height="160" 
-      viewBox="0 0 100 110" 
+      width="160" 
+      height="180" 
+      viewBox="0 0 120 130" 
       fill="none" 
       className={active ? "gashapon-active" : ""}
       style={{ overflow: 'visible', transition: 'transform 0.3s ease' }}
     >
-      {/* 玻璃球顶盖 */}
-      <circle cx="50" cy="40" r="32" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="2.5" />
-      <path d="M26 23 C36 15, 64 15, 74 23 Z" fill="#E57373" stroke="#3E3A36" strokeWidth="2.5" />
-      <circle cx="50" cy="14" r="3" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="2" />
-      
-      {/* 玻璃球内的彩色扭蛋 */}
-      <circle cx="34" cy="48" r="5" fill="#E57373" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="45" cy="54" r="5" fill="#8B7D6C" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="56" cy="50" r="5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="65" cy="43" r="5" fill="#E57373" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="50" cy="38" r="5" fill="#8B7D6C" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="38" cy="37" r="5" fill="#E57373" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="58" cy="33" r="5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="1" />
-      <circle cx="47" cy="27" r="5" fill="#8B7D6C" stroke="#3E3A36" strokeWidth="1" />
+      {/* 闪烁的小星星 (背景装饰) */}
+      <path d="M12 25 L13 28 L16 29 L13 30 L12 33 L11 30 L8 29 L11 28 Z" fill="#F5C77E" opacity="0.8" className="sparkle-animate" />
+      <path d="M108 55 L109 58 L112 59 L109 60 L108 63 L107 60 L104 59 L107 58 Z" fill="#F5C77E" opacity="0.8" className="sparkle-animate" />
+      <path d="M15 90 L16 93 L19 94 L16 95 L15 98 L14 95 L11 94 L14 93 Z" fill="#F5C77E" opacity="0.6" />
 
-      {/* 扭蛋机基座 */}
-      <path d="M20 70 L80 70 L75 100 L25 100 Z" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="2.5" />
-      <rect x="25" y="70" width="50" height="6" fill="#8B7D6C" stroke="#3E3A36" strokeWidth="2" />
+      {/* 扭蛋机玻璃球 */}
+      <circle cx="60" cy="45" r="32" fill="#FFFFFF" stroke="#3E3A36" strokeWidth="2.5" />
+      <path d="M32 30 A 32 32 0 0 1 88 30 Z" fill="rgba(62,58,54,0.03)" />
       
-      {/* 出蛋口与旋钮 */}
-      <circle cx="50" cy="83" r="7" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="2" />
-      <line x1="50" y1="79" x2="50" y2="87" stroke="#3E3A36" strokeWidth="2" strokeLinecap="round" />
-      <line x1="46" y1="83" x2="54" y2="83" stroke="#3E3A36" strokeWidth="2" strokeLinecap="round" />
-      <rect x="42" y="93" width="16" height="7" rx="2.5" fill="#3E3A36" />
+      {/* 顶部盖子 */}
+      <path d="M32 23 C 32 23, 38 14, 60 14 C 82 14, 88 23, 88 23 L91 26 L29 26 Z" fill="#E57373" stroke="#3E3A36" strokeWidth="2.5" />
+      <circle cx="60" cy="12" r="3.5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="2.5" />
+
+      {/* 扭蛋机内的彩色小球 */}
+      <circle cx="42" cy="55" r="5" fill="#E57373" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="53" cy="58" r="5" fill="#F5C77E" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="64" cy="56" r="5" fill="#81C784" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="75" cy="53" r="5" fill="#64B5F6" stroke="#3E3A36" strokeWidth="1.5" />
+      
+      <circle cx="48" cy="49" r="5" fill="#8B7D6C" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="59" cy="51" r="5" fill="#E57373" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="70" cy="48" r="5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="1.5" />
+      
+      <circle cx="39" cy="44" r="5" fill="#64B5F6" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="50" cy="42" r="5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="61" cy="43" r="5" fill="#F5C77E" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="72" cy="41" r="5" fill="#81C784" stroke="#3E3A36" strokeWidth="1.5" />
+
+      {/* 问号小牌子 */}
+      <circle cx="60" cy="41" r="10" fill="#FFFFFF" stroke="#3E3A36" strokeWidth="2" />
+      <text x="60" y="45" fontSize="11" fontWeight="bold" fill="#FF9800" textAnchor="middle">?</text>
+
+      {/* 扭蛋机金线底座 */}
+      <path d="M30 73 L90 73 C93 73, 95 75, 95 78 L91 106 C91 109, 88 111, 85 111 L35 111 C32 111, 29 109, 29 106 L25 78 C25 75, 27 73, 30 73 Z" fill="#F5C77E" stroke="#3E3A36" strokeWidth="2.5" />
+      <path d="M27 73 L93 73 L91 79 L29 79 Z" fill="#E57373" stroke="#3E3A36" strokeWidth="2" />
+      
+      {/* 旋钮和出蛋口 */}
+      <circle cx="43" cy="91" r="7" fill="#FFFFFF" stroke="#3E3A36" strokeWidth="2" />
+      <text x="43" y="94" fontSize="8" fontWeight="bold" fill="#3E3A36" textAnchor="middle">?</text>
+
+      <circle cx="60" cy="91" r="8" fill="#3E3A36" />
+      <circle cx="60" cy="91" r="3" fill="#FFFFFF" />
+      <path d="M60 85 L60 97" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+
+      <rect x="74" y="86" width="12" height="14" rx="2" fill="#3E3A36" />
+      <rect x="73" y="85" width="14" height="16" rx="3" fill="none" stroke="#3E3A36" strokeWidth="1.5" />
+      <circle cx="80" cy="96" r="4.5" fill="#FAF9F5" stroke="#3E3A36" strokeWidth="1" />
+      
+      <rect x="25" y="111" width="70" height="4" rx="2" fill="#E57373" stroke="#3E3A36" strokeWidth="2" />
     </svg>
   );
 }
@@ -87,9 +112,80 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
       });
 
       // 过滤掉最近 5 天内吃过的食物（即最新时间戳距离现在 < 5天）
-      const validCandidates = Object.values(foodGroups).filter(r => {
+      let validCandidates = Object.values(foodGroups).filter(r => {
         return (now - r.timestamp) >= fiveDaysMs;
       });
+
+      // 【第一重兜底】：如果在最近 5-30 天内没有评分 >=3 且未吃过的记录
+      // 放宽限制，只要求最近 30 天内且评分 >= 3，不排除最近 5 天吃的
+      if (validCandidates.length === 0) {
+        validCandidates = Object.values(foodGroups);
+      }
+
+      // 【第二重兜底】：如果依然为空（说明最近 30 天内没有记录或评分全部 <3）
+      // 那么使用全历史记录中所有评分 >=3 且包含抠图贴纸（或整体记录）的记录
+      if (validCandidates.length === 0) {
+        const allFoodGroups: { [name: string]: FoodRecord } = {};
+        allRecords.filter(r => r.rating >= 3).forEach(r => {
+          const name = r.foodName.trim();
+          if (!allFoodGroups[name] || r.timestamp > allFoodGroups[name].timestamp) {
+            allFoodGroups[name] = r;
+          }
+        });
+        validCandidates = Object.values(allFoodGroups);
+      }
+
+      // 【第三重兜底】：如果数据库彻底为空（全新账户测试）
+      // 采用系统静态默认推荐贴纸池，确保测试和使用 100% 可用且可顺利玩耍
+      if (validCandidates.length === 0) {
+        const mockStickers = [
+          {
+            id: 'mock-1',
+            timestamp: now - 27 * 24 * 60 * 60 * 1000,
+            foodName: '重庆小面',
+            mealType: 'lunch',
+            rating: 5,
+            isNewFood: false,
+            isFavorited: true,
+            note: '麻辣鲜香，面条筋道，绝美午餐！',
+            imageBlob: undefined
+          },
+          {
+            id: 'mock-2',
+            timestamp: now - 15 * 24 * 60 * 60 * 1000,
+            foodName: '奶油培根意面',
+            mealType: 'dinner',
+            rating: 4,
+            isNewFood: false,
+            isFavorited: true,
+            note: '浓郁奶油香，意面软硬适中，配培根超赞。',
+            imageBlob: undefined
+          },
+          {
+            id: 'mock-3',
+            timestamp: now - 10 * 24 * 60 * 60 * 1000,
+            foodName: '麻辣火锅',
+            mealType: 'dinner',
+            rating: 5,
+            isNewFood: false,
+            isFavorited: true,
+            note: '跟朋友一起吃的麻辣火锅，热气腾腾，满足！',
+            imageBlob: undefined
+          },
+          {
+            id: 'mock-4',
+            timestamp: now - 30 * 24 * 60 * 60 * 1000,
+            foodName: '提拉米苏',
+            mealType: 'tea',
+            rating: 5,
+            isNewFood: false,
+            isFavorited: true,
+            note: '甜而不腻，带着一点咖啡的苦香。',
+            imageBlob: undefined
+          }
+        ];
+        validCandidates = mockStickers as FoodRecord[];
+      }
 
       setCandidates(validCandidates);
     };

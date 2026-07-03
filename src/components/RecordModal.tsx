@@ -38,7 +38,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
       const processedBlob = await removeBackground(file, {
-        publicPath: `${window.location.origin}${import.meta.env.BASE_URL}background-removal/`
+        publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@1.4.5/dist/'
       });
       
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线

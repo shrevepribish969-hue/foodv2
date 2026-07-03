@@ -600,24 +600,6 @@ export default function FavoritesPage({ onSelectDate, setActiveTab }: FavoritesP
                     );
                   })}
                 </div>
-
-                {/* 底部跳转全部历史选项 */}
-                {setActiveTab && (
-                  <button 
-                    onClick={() => {
-                      handleAccept(); // 关闭弹窗
-                      setActiveTab('report'); // 跳转回忆录
-                    }}
-                    style={{
-                      background: 'none', border: 'none', color: '#8A857C',
-                      fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px'
-                    }}
-                    className="bouncy-hover"
-                  >
-                    查看全部历史记录
-                  </button>
-                )}
               </div>
             )}
           </div>

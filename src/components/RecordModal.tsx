@@ -455,6 +455,18 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
           </div>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
+          
+          {errorMsg && (
+            <div style={{
+              background: '#FFEBEE', border: '1px solid #FFCDD2', borderRadius: '8px',
+              padding: '8px 12px', marginTop: '12px', width: '240px',
+              fontSize: '0.7rem', color: '#C62828', textAlign: 'left',
+              display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 10
+            }}>
+              <div style={{ fontWeight: 'bold' }}>⚠️ 抠图算法异常:</div>
+              <div style={{ wordBreak: 'break-all', fontFamily: 'monospace', lineHeight: '1.3' }}>{errorMsg}</div>
+            </div>
+          )}
         </div>
 
         {/* 手账式表单输入 */}

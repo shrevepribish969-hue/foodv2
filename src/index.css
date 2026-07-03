@@ -27,3 +27,36 @@ body {
 .bouncy-hover:active {
   transform: scale(0.95);
 }
+
+/* 贴纸弹性弹出动画 */
+@keyframes sticker-pop {
+  0% {
+    transform: scale(0) rotate(var(--rot, 0deg)) translate(var(--ox, 0px), var(--oy, 0px));
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15) rotate(var(--rot, 0deg)) translate(var(--ox, 0px), var(--oy, 0px));
+  }
+  100% {
+    transform: scale(1) rotate(var(--rot, 0deg)) translate(var(--ox, 0px), var(--oy, 0px));
+    opacity: 1;
+  }
+}
+
+.sticker-animate {
+  animation: sticker-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+/* 刷新图标旋转动画 */
+@keyframes icon-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-spinning {
+  animation: icon-spin 0.5s ease-in-out;
+}

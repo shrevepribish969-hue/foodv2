@@ -25,6 +25,10 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [processedUrl, setProcessedUrl] = useState<string | null>(recordToEdit && recordToEdit.imageBlob ? URL.createObjectURL(recordToEdit.imageBlob) : null);
   const [recordTime, setRecordTime] = useState<number>(recordToEdit ? recordToEdit.timestamp : (initialDate ? initialDate.getTime() : Date.now()));
   const [processing, setProcessing] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [imgInfo, setImgInfo] = useState('');
+  const [diagInfo, setDiagInfo] = useState('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,18 +38,44 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     if (!file) return;
 
     setProcessing(true);
+    setElapsedTime(0);
+    setProgressText('正在加载模型文件...');
+
+    // 测定系统环境与隔离状态
+    const isIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
+    const hasSAB = typeof SharedArrayBuffer !== 'undefined';
+    setDiagInfo(`跨域隔离: ${isIsolated ? '是' : '否'} | 共享内存: ${hasSAB ? '可用' : '不可用'}`);
+
+    // 测定上传图片尺寸
+    const tempImg = new Image();
+    tempImg.src = URL.createObjectURL(file);
+    tempImg.onload = () => {
+      setImgInfo(`${tempImg.width} × ${tempImg.height} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    };
+
+    // 启动运行计时器
+    const timer = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
     
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
       const processedBlob = await removeBackground(file, {
-        publicPath: `${window.location.origin}${import.meta.env.BASE_URL}background-removal/`
+        publicPath: `${window.location.origin}${import.meta.env.BASE_URL}background-removal/`,
+        progress: (key, current, total) => {
+          const fileName = key.substring(key.lastIndexOf('/') + 1);
+          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          setProgressText(`下载 ${fileName}... ${percent}%`);
+        }
       });
       
+      clearInterval(timer);
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
       const originalUrl = URL.createObjectURL(file);
       const cutoutUrl = URL.createObjectURL(processedBlob);
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
+      clearInterval(timer);
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
       // 兜底方案：使用原始大图，做聚光灯模糊兜底
       const originalUrl = URL.createObjectURL(file);
@@ -317,7 +347,28 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
               overflow: 'visible', position: 'relative'
             }}>
               {processing ? (
-                <span style={{ fontSize: '0.85rem', color: '#8A857C' }}>正在抠图中...</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '0 8px', textAlign: 'center' }}>
+                  <div style={{
+                    width: '20px', height: '20px',
+                    border: '2px solid #EAE6DF', borderTopColor: 'var(--color-green)',
+                    borderRadius: '50%', animation: 'icon-spin 1s linear infinite'
+                  }} />
+                  <span style={{ fontSize: '0.78rem', color: '#8A857C', fontWeight: 'bold' }}>{progressText}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#B5A58E', margin: '4px 0' }}>已耗时: <b style={{ color: 'var(--color-green)' }}>{elapsedTime} 秒</b></span>
+                  
+                  {/* 诊断仪表盘 */}
+                  <div style={{
+                    background: '#F4EFE6', borderRadius: '8px', padding: '6px 10px', 
+                    fontSize: '0.62rem', color: '#6E6A63', textAlign: 'left',
+                    width: '100%', maxWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px'
+                  }}>
+                    <div>⚡ 运行环境: {diagInfo}</div>
+                    <div>🖼️ 图片规格: {imgInfo || '检测中...'}</div>
+                    <div style={{ color: '#8A857C', fontSize: '0.58rem', marginTop: '2px', borderTop: '1px dashed #E5DDCF', paddingTop: '2px' }}>
+                      ℹ️ 首次运行需自动拉取 88MB 模型缓存，超时（或单线程运行超过1分钟）将自动切换为虚线圈原图兜底。
+                    </div>
+                  </div>
+                </div>
               ) : processedUrl ? (
                 <img src={processedUrl} alt="food preview" style={{ 
                   height: '100%', width: '100%', objectFit: 'contain'

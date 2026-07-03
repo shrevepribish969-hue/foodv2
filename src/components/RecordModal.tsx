@@ -112,6 +112,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
       const processedBlob = await removeBackground(compressedFile as File, {
         publicPath: 'https://cdn.npmmirror.com/packages/@imgly/background-removal-data/1.4.5/files/dist/',
+        model: 'medium',
         progress: (key, current, total) => {
           const fileName = key.substring(key.lastIndexOf('/') + 1);
           const percent = total > 0 ? Math.round((current / total) * 100) : 0;

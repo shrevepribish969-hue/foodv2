@@ -345,7 +345,7 @@ export default function FavoritesPage({ onSelectDate: _onSelectDate, setActiveTa
                 <ArrowLeft size={20} />
               </button>
               <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#8A857C', background: '#F2EFE7', padding: '3px 10px', borderRadius: '12px' }}>
-                {gashaponState === 'show-all' ? '本次推荐' : '扭蛋中'}
+                {gashaponState === 'revealed' ? '推荐结果' : '扭蛋中'}
               </span>
             </div>
 

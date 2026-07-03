@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Heart, Star, Settings, MoreHorizontal, Sun, Moon, Coffee } from 'lucide-react';
+import { Plus, Trash2, Heart, Star, Settings, Sun, Moon, Coffee } from 'lucide-react';
 import { type FoodRecord, getAllRecords, deleteRecord } from '../db';
 import RecordModal from './RecordModal';
 

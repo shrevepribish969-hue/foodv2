@@ -322,7 +322,7 @@ export default function ReportPage() {
             {latestMeal ? (
               <>
                 {new Date((latestMeal as FoodRecord).timestamp).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} · 
-                {latestMeal.mealType === 'night' ? '夜宵' : '晚餐'} 
+                {(latestMeal as FoodRecord).mealType === 'night' ? '夜宵' : '晚餐'} 
                 <span style={{ marginLeft: '6px', color: 'var(--color-green)' }}>
                   {new Date((latestMeal as FoodRecord).timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </span>

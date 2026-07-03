@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, Camera, Star, Heart, Pencil, Sun, Moon, Coffee } from 'lucide-react';
+import { Camera, Star, Heart, Pencil, Sun, Moon, Coffee } from 'lucide-react';
 import { type FoodRecord, addRecord } from '../db';
 import { removeBackground } from '@imgly/background-removal';
 
@@ -25,7 +25,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [processedUrl, setProcessedUrl] = useState<string | null>(recordToEdit && recordToEdit.imageBlob ? URL.createObjectURL(recordToEdit.imageBlob) : null);
   const [recordTime, setRecordTime] = useState<number>(recordToEdit ? recordToEdit.timestamp : (initialDate ? initialDate.getTime() : Date.now()));
   const [processing, setProcessing] = useState(false);
-  const [useFallback, setUseFallback] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,7 +34,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     if (!file) return;
 
     setProcessing(true);
-    setUseFallback(false);
     
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
@@ -246,8 +244,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       ctx.setLineDash([8, 6]);
       ctx.stroke();
       ctx.restore();
-      
-      setUseFallback(true);
     }
 
     canvas.toBlob((b) => {

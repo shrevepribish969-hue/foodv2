@@ -11,6 +11,44 @@ interface RecordModalProps {
   recordToEdit?: FoodRecord;
 }
 
+const resizeImage = (file: File, maxSide: number): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxSide || height > maxSide) {
+        if (width > height) {
+          height = Math.round((height * maxSide) / width);
+          width = maxSide;
+        } else {
+          width = Math.round((width * maxSide) / height);
+          height = maxSide;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          resolve(file);
+        }
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = (err) => reject(err);
+  });
+};
+
 export default function RecordModal({ onClose, onSaved, initialDate, recordToEdit }: RecordModalProps) {
   const [foodName, setFoodName] = useState(recordToEdit ? recordToEdit.foodName : '');
   const [mealType, setMealType] = useState<FoodRecord['mealType']>(recordToEdit ? recordToEdit.mealType : 'breakfast');
@@ -39,19 +77,29 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     setProcessing(true);
     setElapsedTime(0);
-    setProgressText('正在加载模型文件...');
+    setProgressText('正在压缩图片...');
 
     // 测定系统环境与隔离状态
     const isIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
     const hasSAB = typeof SharedArrayBuffer !== 'undefined';
     setDiagInfo(`跨域隔离: ${isIsolated ? '是' : '否'} | 共享内存: ${hasSAB ? '可用' : '不可用'}`);
 
-    // 测定上传图片尺寸
+    let compressedFile: Blob;
+    try {
+      compressedFile = await resizeImage(file, 1024);
+    } catch (e) {
+      console.warn("图片压缩失败，使用原图进行处理", e);
+      compressedFile = file;
+    }
+
+    // 测定压缩后图片尺寸展示
     const tempImg = new Image();
-    tempImg.src = URL.createObjectURL(file);
+    tempImg.src = URL.createObjectURL(compressedFile);
     tempImg.onload = () => {
-      setImgInfo(`${tempImg.width} × ${tempImg.height} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      setImgInfo(`${tempImg.width} × ${tempImg.height} (${(compressedFile.size / 1024 / 1024).toFixed(2)}MB) [已压]`);
     };
+
+    setProgressText('正在加载模型文件...');
 
     // 启动运行计时器
     const timer = setInterval(() => {
@@ -60,7 +108,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
-      const processedBlob = await removeBackground(file, {
+      const processedBlob = await removeBackground(compressedFile as File, {
         publicPath: `${window.location.origin}${import.meta.env.BASE_URL}background-removal/`,
         progress: (key, current, total) => {
           const fileName = key.substring(key.lastIndexOf('/') + 1);
@@ -71,14 +119,14 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       
       clearInterval(timer);
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
-      const originalUrl = URL.createObjectURL(file);
+      const originalUrl = URL.createObjectURL(compressedFile);
       const cutoutUrl = URL.createObjectURL(processedBlob);
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
       clearInterval(timer);
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
       // 兜底方案：使用原始大图，做聚光灯模糊兜底
-      const originalUrl = URL.createObjectURL(file);
+      const originalUrl = URL.createObjectURL(compressedFile);
       drawSpotlightFood(originalUrl, null);
     }
   };

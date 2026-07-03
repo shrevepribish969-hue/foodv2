@@ -88,7 +88,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     let compressedFile: Blob;
     try {
-      compressedFile = await resizeImage(file, 1600);
+      compressedFile = await resizeImage(file, 1024);
     } catch (e) {
       console.warn("图片压缩失败，使用原图进行处理", e);
       compressedFile = file;

@@ -29,6 +29,9 @@ if (typeof window === 'undefined') {
         if (!r.url.startsWith(self.location.origin)) {
             return;
         }
+        if (r.url.includes('/background-removal/')) {
+            return;
+        }
 
         const request = (coepCredentialless && r.mode === "no-cors")
             ? new Request(r, {

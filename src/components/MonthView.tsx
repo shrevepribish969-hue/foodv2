@@ -109,7 +109,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   return (
     <div style={{ 
       background: '#FAF9F5', border: '1px solid var(--color-border)', 
-      borderRadius: '16px', padding: '20px 8px', 
+      borderRadius: '16px', padding: '20px 6px', 
       boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)' 
     }}>
       {/* 顶部月份导航 */}
@@ -130,16 +130,16 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
       {/* 星期标头 (周一至周日) */}
       <div style={{ 
         display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', 
-        textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold', 
+        textAlign: 'center', fontSize: '0.72rem', fontWeight: 'bold', 
         color: '#8A857C', marginBottom: '12px' 
       }}>
         {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map(w => <div key={w}>{w}</div>)}
       </div>
 
       {/* 垂直长药丸胶囊日历网格 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px 3px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px 2px' }}>
         {daysArray.map((date, idx) => {
-          if (!date) return <div key={`empty-${idx}`} style={{ height: '75px' }} />;
+          if (!date) return <div key={`empty-${idx}`} style={{ height: '68px' }} />;
           
           const dayRecords = getDayRecords(date);
           const hasRecord = dayRecords.length > 0;
@@ -160,7 +160,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
               type="button"
               onClick={() => onSelectDate(date)}
               style={{
-                height: '75px', 
+                height: '68px', 
                 background: isToday ? 'var(--color-green)' : (hasRecord ? '#FAF9F5' : '#F2EFE7'),
                 border: hasRecord ? '1px solid var(--color-border)' : '1px dashed rgba(227, 223, 213, 0.6)',
                 borderRadius: '15px', // 微圆角
@@ -188,14 +188,14 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
                 {date.getDate()}
               </span>
 
-              {/* 单张精美美食贴纸展现区 (默认保留高度，无色纯留白，极限放大至 40px) */}
+              {/* 单张精美美食贴纸展现区 (默认保留高度，无色纯留白，极限放大至 32px) */}
               <div style={{ 
-                width: '40px', 
-                height: '40px', 
+                width: '32px', 
+                height: '32px', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                marginTop: '12px',
+                marginTop: '10px',
                 position: 'relative' // 相对定位供 Badge 贴合
               }}>
                 {bestRecord ? (
@@ -205,8 +205,8 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
                       <>
                         <div 
                           style={{ 
-                            width: '40px', 
-                            height: '40px', 
+                            width: '32px', 
+                            height: '32px', 
                             borderRadius: '6px', 
                             overflow: 'visible', 
                             display: 'flex', 
@@ -218,7 +218,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
                           {imgUrl ? (
                             <img src={imgUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="best preview" />
                           ) : (
-                            <span style={{ fontSize: '1.25rem' }}>🍙</span>
+                            <span style={{ fontSize: '1.1rem' }}>🍙</span>
                           )}
                         </div>
 

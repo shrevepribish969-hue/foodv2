@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/foodv2/',
   plugins: [react()],
   optimizeDeps: {
     exclude: ['@imgly/background-removal']
@@ -14,3 +15,4 @@ export default defineConfig({
     }
   }
 })
+

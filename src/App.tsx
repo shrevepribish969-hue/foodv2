@@ -30,7 +30,12 @@ export default function App() {
         {activeTab === 'today' && <TodayPage activeDate={activeDate} setActiveDate={setActiveDate} />}
         {activeTab === 'month' && <MonthView onSelectDate={handleSelectDateFromCalendar} />}
         {activeTab === 'report' && <ReportPage />}
-        {activeTab === 'favorites' && <FavoritesPage />}
+        {activeTab === 'favorites' && (
+          <FavoritesPage 
+            onSelectDate={handleSelectDateFromCalendar} 
+            setActiveTab={setActiveTab} 
+          />
+        )}
       </main>
 
       {/* MUJI 极简底栏导航 (带文字) */}

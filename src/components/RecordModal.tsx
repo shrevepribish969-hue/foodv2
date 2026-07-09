@@ -78,6 +78,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [recordTime, setRecordTime] = useState<number>(recordToEdit ? recordToEdit.timestamp : (initialDate ? initialDate.getTime() : Date.now()));
   const [processing, setProcessing] = useState(false);
   const [progressText, setProgressText] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [imgInfo, setImgInfo] = useState('');
   const [diagInfo, setDiagInfo] = useState('');
@@ -113,6 +114,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     setProcessing(true);
     setElapsedTime(0);
+    setProgressPercent(0);
     setErrorMsg('');
     setProgressText('正在压缩图片...');
 
@@ -151,6 +153,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
         progress: (key, current, total) => {
           const fileName = key.substring(key.lastIndexOf('/') + 1);
           const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          setProgressPercent(percent);
           setProgressText(`下载 ${fileName}... ${percent}%`);
         }
       });
@@ -198,8 +201,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
     if (imgCutout) {
       try {
-        const orangeColor = '#FF9800'; // 明丽橘黄色
-
         // 1. 获取 imgCutout 的真实不透明物体边界包围盒 (Bounding Box)
         const boxCanvas = document.createElement('canvas');
         boxCanvas.width = imgCutout.width;
@@ -277,17 +278,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
         const x = (300 - w) / 2;
         const y = (300 - h) / 2;
 
-        // 4. 创建橘黄色剪影离屏 canvas
-        const orangeSilhouette = document.createElement('canvas');
-        orangeSilhouette.width = 300;
-        orangeSilhouette.height = 300;
-        const oCtx = orangeSilhouette.getContext('2d');
-        if (oCtx) {
-          oCtx.drawImage(cleanCanvas, x, y, w, h);
-          oCtx.globalCompositeOperation = 'source-in';
-          oCtx.fillStyle = orangeColor;
-          oCtx.fillRect(0, 0, 300, 300);
-        }
+        // Removed orangeSilhouette logic
 
         // 5. 创建白色剪影离屏 canvas
         const whiteSilhouette = document.createElement('canvas');
@@ -303,25 +294,29 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
         // 定义描边线宽
         const whiteBorder = 8;
-        const orangeBorder = 3;
-        const totalBorder = whiteBorder + orangeBorder;
 
+        // 创建组合白边的离屏 Canvas
+        const borderCanvas = document.createElement('canvas');
+        borderCanvas.width = 300;
+        borderCanvas.height = 300;
+        const bCtx = borderCanvas.getContext('2d');
+        if (bCtx) {
+          // 朝 16 方向偏移绘制白色贴纸底边层
+          for (let angle = 0; angle < 360; angle += 22.5) {
+            const rad = (angle * Math.PI) / 180;
+            const ox = Math.cos(rad) * whiteBorder;
+            const oy = Math.sin(rad) * whiteBorder;
+            bCtx.drawImage(whiteSilhouette, ox, oy);
+          }
+        }
+
+        // 在主画布上绘制带有阴影的边框
         ctx.save();
-        // 6. 朝 16 方向偏移绘制橘黄色线条底色层
-        for (let angle = 0; angle < 360; angle += 22.5) {
-          const rad = (angle * Math.PI) / 180;
-          const ox = Math.cos(rad) * totalBorder;
-          const oy = Math.sin(rad) * totalBorder;
-          ctx.drawImage(orangeSilhouette, ox, oy);
-        }
-
-        // 7. 朝 16 方向偏移绘制白色贴纸底边层
-        for (let angle = 0; angle < 360; angle += 22.5) {
-          const rad = (angle * Math.PI) / 180;
-          const ox = Math.cos(rad) * whiteBorder;
-          const oy = Math.sin(rad) * whiteBorder;
-          ctx.drawImage(whiteSilhouette, ox, oy);
-        }
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetY = 4;
+        ctx.shadowOffsetX = 0;
+        ctx.drawImage(borderCanvas, 0, 0);
         ctx.restore();
 
         // 8. 覆盖彩色剪裁食物本体
@@ -423,7 +418,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
         {/* 贴纸卡片展示区 */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
           <div style={{
-            background: '#FAF6EE', border: '1px solid var(--color-border)',
+            background: '#EFE9DF', border: '1px solid var(--color-border)',
             padding: '12px', borderRadius: '16px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: '240px', height: '200px', cursor: 'default',
@@ -436,11 +431,13 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
             }}>
               {processing ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '0 8px', textAlign: 'center' }}>
-                  <div style={{
-                    width: '20px', height: '20px',
-                    border: '2px solid #EAE6DF', borderTopColor: 'var(--color-green)',
-                    borderRadius: '50%', animation: 'icon-spin 1s linear infinite'
-                  }} />
+                  <div style={{ width: '160px', height: '6px', background: '#EAE6DF', borderRadius: '4px', overflow: 'hidden', margin: '8px 0' }}>
+                    <div style={{ 
+                      width: `${progressPercent}%`, height: '100%', 
+                      background: 'var(--color-green)', borderRadius: '4px',
+                      transition: 'width 0.2s ease-out'
+                    }} />
+                  </div>
                   <span style={{ fontSize: '0.78rem', color: '#8A857C', fontWeight: 'bold' }}>{progressText}</span>
                   <span style={{ fontSize: '0.75rem', color: '#B5A58E', margin: '4px 0' }}>已耗时: <b style={{ color: 'var(--color-green)' }}>{elapsedTime} 秒</b></span>
                   

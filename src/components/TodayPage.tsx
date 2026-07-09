@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Heart, Star, Settings, Sun, Moon, Coffee } from 'lucide-react';
+import { Plus, Trash2, Heart, Star, Settings, Sun, Moon, Coffee, Pencil } from 'lucide-react';
 import { type FoodRecord, getAllRecords, deleteRecord, toLocalYMD } from '../db';
 import RecordModal from './RecordModal';
 import QuickNoteModal from './QuickNoteModal';
@@ -143,17 +143,51 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
                       const imgUrl = record.imageBlob ? URL.createObjectURL(record.imageBlob) : null;
 
                       return (
-                        <div 
-                          key={record.id} 
-                          onClick={() => { setSelectedRecordToEdit(record); setIsModalOpen(true); }}
-                          style={{ 
-                            position: 'relative', background: '#FAF9F5', 
-                            border: '1px solid var(--color-border)', borderRadius: '12px',
-                            padding: '16px', display: 'flex', gap: '16px',
-                            boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)',
-                            cursor: 'pointer'
-                          }}
-                        >
+                        record.mealType === '闪念' ? (
+                          <div 
+                            key={record.id} 
+                            onClick={() => { setSelectedRecordToEdit(record); setIsModalOpen(true); }}
+                            style={{ 
+                              position: 'relative', 
+                              background: '#FFFDF0', 
+                              border: '1px dashed #E5D5C5', 
+                              borderRadius: '10px',
+                              padding: '12px 16px', 
+                              boxShadow: '0 2px 6px rgba(62, 58, 54, 0.02)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.72rem', color: '#B5A58E', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <Pencil size={11} /> 闪念笔记 · {timeString}
+                              </span>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }} 
+                                style={{ background: 'none', border: 'none', color: '#CCC', cursor: 'pointer', padding: 0 }} 
+                                title="删除"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text)', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                              {record.note}
+                            </p>
+                          </div>
+                        ) : (
+                          <div 
+                            key={record.id} 
+                            onClick={() => { setSelectedRecordToEdit(record); setIsModalOpen(true); }}
+                            style={{ 
+                              position: 'relative', background: '#FAF9F5', 
+                              border: '1px solid var(--color-border)', borderRadius: '12px',
+                              padding: '16px', display: 'flex', gap: '16px',
+                              boxShadow: '0 4px 12px rgba(62, 58, 54, 0.03)',
+                              cursor: 'pointer'
+                            }}
+                          >
                           {/* 左侧食物贴纸 */}
                           <div style={{ 
                             width: '100px', height: '100px', flexShrink: 0, 
@@ -239,7 +273,8 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
 
                           </div>
                         </div>
-                      );
+                      )
+                    );
                     })}
                   </div>
                 </div>

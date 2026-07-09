@@ -146,7 +146,7 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
                         record.mealType === '闪念' ? (
                           <div 
                             key={record.id} 
-                            onClick={() => { setSelectedRecordToEdit(record); setIsModalOpen(true); }}
+                            onClick={() => { setSelectedRecordToEdit(record); setIsQuickNoteOpen(true); }}
                             style={{ 
                               position: 'relative', 
                               background: '#FFFDF0', 
@@ -306,9 +306,16 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
 
       {isQuickNoteOpen && (
         <QuickNoteModal 
-          onClose={() => setIsQuickNoteOpen(false)}
-          onSaved={() => { fetchRecords(); }}
+          onClose={() => {
+            setIsQuickNoteOpen(false);
+            setSelectedRecordToEdit(undefined);
+          }}
+          onSaved={() => {
+            fetchRecords();
+            setSelectedRecordToEdit(undefined);
+          }}
           initialDate={activeDate}
+          recordToEdit={selectedRecordToEdit}
         />
       )}
 

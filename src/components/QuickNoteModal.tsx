@@ -5,10 +5,11 @@ interface QuickNoteModalProps {
   onClose: () => void;
   onSaved: () => void;
   initialDate?: Date;
+  recordToEdit?: FoodRecord;
 }
 
-export default function QuickNoteModal({ onClose, onSaved, initialDate }: QuickNoteModalProps) {
-  const [note, setNote] = useState('');
+export default function QuickNoteModal({ onClose, onSaved, initialDate, recordToEdit }: QuickNoteModalProps) {
+  const [note, setNote] = useState(recordToEdit ? recordToEdit.note : '');
 
   const handleSave = async () => {
     if (!note.trim()) {
@@ -16,13 +17,13 @@ export default function QuickNoteModal({ onClose, onSaved, initialDate }: QuickN
       return;
     }
     const record: FoodRecord = {
-      id: Math.random().toString(36).substring(2, 9),
-      timestamp: initialDate ? initialDate.getTime() : Date.now(),
+      id: recordToEdit ? recordToEdit.id : Math.random().toString(36).substring(2, 9),
+      timestamp: recordToEdit ? recordToEdit.timestamp : (initialDate ? initialDate.getTime() : Date.now()),
       foodName: '闪念笔记',
       mealType: '闪念',
-      rating: 5,
-      isNewFood: false,
-      isFavorited: false,
+      rating: recordToEdit ? recordToEdit.rating : 5,
+      isNewFood: recordToEdit ? recordToEdit.isNewFood : false,
+      isFavorited: recordToEdit ? recordToEdit.isFavorited : false,
       note: note.trim(),
     };
     await addRecord(record);

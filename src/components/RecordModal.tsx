@@ -293,7 +293,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
         }
 
         // 定义描边线宽
-        const whiteBorder = 8;
+        const whiteBorder = 12;
 
         // 创建组合白边的离屏 Canvas
         const borderCanvas = document.createElement('canvas');

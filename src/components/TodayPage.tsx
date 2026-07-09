@@ -55,7 +55,12 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
         console.warn(e);
       }
     });
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+    return Object.entries(groups)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([dateStr, items]) => [
+        dateStr,
+        items.sort((a, b) => a.timestamp - b.timestamp)
+      ] as [string, FoodRecord[]]);
   };
 
   const grouped = groupRecordsByDate();

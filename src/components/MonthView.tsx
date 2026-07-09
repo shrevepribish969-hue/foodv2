@@ -13,7 +13,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   // 刷新状态与弹性动画触发 Key
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [randomParams, setRandomParams] = useState<{ rot: number; ox: number; oy: number }[]>([]);
+  const [randomParams, setRandomParams] = useState<{ rot: number; ox: number; oy: number; scale: number }[]>([]);
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -57,7 +57,8 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
     const params = Array.from({ length: topStickers.length }, () => ({
       rot: Math.floor(Math.random() * 21) - 10,  // -10 到 +10 度
       ox: Math.floor(Math.random() * 11) - 5,    // -5 到 +5 像素偏移
-      oy: Math.floor(Math.random() * 11) - 5     // -5 到 +5 像素偏移
+      oy: Math.floor(Math.random() * 11) - 5,    // -5 到 +5 像素偏移
+      scale: 0.85 + Math.random() * 0.3          // 0.85 到 1.15
     }));
     setRandomParams(params);
   }, [topStickers.length, currentMonth]);
@@ -71,7 +72,8 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
     const params = Array.from({ length: topStickers.length }, () => ({
       rot: Math.floor(Math.random() * 21) - 10,
       ox: Math.floor(Math.random() * 11) - 5,
-      oy: Math.floor(Math.random() * 11) - 5
+      oy: Math.floor(Math.random() * 11) - 5,
+      scale: 0.85 + Math.random() * 0.3
     }));
     setRandomParams(params);
     setRefreshKey(prev => prev + 1);
@@ -326,7 +328,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
               const imgUrl = record.imageBlob ? URL.createObjectURL(record.imageBlob) : null;
               if (!imgUrl) return null;
 
-              const params = randomParams[index] || { rot: 0, ox: 0, oy: 0 };
+              const params = randomParams[index] || { rot: 0, ox: 0, oy: 0, scale: 1 };
 
               return (
                 <div
@@ -344,6 +346,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
                     '--rot': `${params.rot}deg`,
                     '--ox': `${params.ox}px`,
                     '--oy': `${params.oy}px`,
+                    '--scale': `${params.scale}`,
                     animationDelay: `${index * 25}ms`,
                     filter: 'drop-shadow(0 3px 6px rgba(62, 58, 54, 0.16))',
                     transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'

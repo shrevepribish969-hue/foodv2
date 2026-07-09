@@ -80,8 +80,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [imgInfo, setImgInfo] = useState('');
-  const [diagInfo, setDiagInfo] = useState('');
+
   const [errorMsg, setErrorMsg] = useState('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,10 +117,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     setErrorMsg('');
     setProgressText('正在压缩图片...');
 
-    // 测定系统环境与隔离状态
-    const isIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
-    const hasSAB = typeof SharedArrayBuffer !== 'undefined';
-    setDiagInfo(`跨域隔离: ${isIsolated ? '是' : '否'} | 共享内存: ${hasSAB ? '可用' : '不可用'}`);
+
 
     let compressedFile: Blob;
     try {
@@ -131,12 +127,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       compressedFile = file;
     }
 
-    // 测定压缩后图片尺寸展示
-    const tempImg = new Image();
-    tempImg.src = URL.createObjectURL(compressedFile);
-    tempImg.onload = () => {
-      setImgInfo(`${tempImg.width} × ${tempImg.height} (${(compressedFile.size / 1024 / 1024).toFixed(2)}MB) [已压]`);
-    };
+
 
     setProgressText('正在加载模型文件...');
 
@@ -447,8 +438,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
                     fontSize: '0.62rem', color: '#6E6A63', textAlign: 'left',
                     width: '100%', maxWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px'
                   }}>
-                    <div>⚡ 运行环境: {diagInfo}</div>
-                    <div>🖼️ 图片规格: {imgInfo || '检测中...'}</div>
                     {errorMsg && <div style={{ color: '#FF5722', fontWeight: 'bold', marginTop: '2px', borderTop: '1px dashed #FFCDD2', paddingTop: '2px' }}>❌ 错误: {errorMsg}</div>}
                     <div style={{ color: '#8A857C', fontSize: '0.58rem', marginTop: '2px', borderTop: '1px dashed #E5DDCF', paddingTop: '2px' }}>
                       ℹ️ 首次运行需自动拉取 88MB 模型缓存，超时（或单线程运行超过1分钟）将自动切换为虚线圈原图兜底。

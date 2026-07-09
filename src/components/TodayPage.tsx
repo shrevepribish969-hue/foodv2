@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Heart, Star, Settings, Sun, Moon, Coffee } from 'lucide-react';
 import { type FoodRecord, getAllRecords, deleteRecord } from '../db';
 import RecordModal from './RecordModal';
+import QuickNoteModal from './QuickNoteModal';
 
 interface TodayPageProps {
   activeDate: Date;
@@ -11,6 +12,8 @@ interface TodayPageProps {
 export default function TodayPage({ activeDate }: TodayPageProps) {
   const [records, setRecords] = useState<FoodRecord[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
+  const [pressTimer, setPressTimer] = useState<number | null>(null);
   const [selectedRecordToEdit, setSelectedRecordToEdit] = useState<FoodRecord | undefined>(undefined);
 
   const fetchRecords = async () => {
@@ -25,6 +28,19 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
   const handleDelete = async (id: string) => {
     await deleteRecord(id);
     fetchRecords();
+  };
+
+  const handlePointerDown = () => {
+    const timer = window.setTimeout(() => {
+      if (navigator.vibrate) navigator.vibrate(50);
+      setIsQuickNoteOpen(true);
+    }, 500);
+    setPressTimer(timer);
+  };
+
+  const handlePointerUp = () => {
+    if (pressTimer) clearTimeout(pressTimer);
+    setPressTimer(null);
   };
 
   // 按日期对记录进行分组 (降序)
@@ -153,11 +169,13 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
                                   fontSize: '0.75rem', color: '#8A857C', 
                                   display: 'inline-flex', alignItems: 'center', gap: '4px' 
                                 }}>
-                                  {record.mealType === 'breakfast' && <><Sun size={12} /> 早餐</>}
-                                  {record.mealType === 'lunch' && <><Sun size={12} /> 午餐</>}
-                                  {record.mealType === 'dinner' && <><Moon size={12} /> 晚餐</>}
-                                  {record.mealType === 'tea' && <><Coffee size={12} /> 下午茶</>}
-                                  {record.mealType === 'night' && <><Moon size={12} /> 夜宵</>}
+                                  {record.mealType === '早餐' && <><Sun size={12} /> 早餐</>}
+                                  {record.mealType === '午餐' && <><Sun size={12} /> 午餐</>}
+                                  {record.mealType === '晚餐' && <><Moon size={12} /> 晚餐</>}
+                                  {record.mealType === '下午茶' && <><Coffee size={12} /> 下午茶</>}
+                                  {record.mealType === '夜宵' && <><Moon size={12} /> 夜宵</>}
+                                  {record.mealType === '饮品' && <><Coffee size={12} /> 饮品</>}
+                                  {!['早餐', '午餐', '晚餐', '饮品', '夜宵', '下午茶'].includes(record.mealType) && <>{record.mealType}</>}
                                   <span style={{ fontSize: '0.75rem', color: '#B5A58E', marginLeft: '4px' }}>{timeString}</span>
                                 </span>
                                 
@@ -221,7 +239,11 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
 
       {/* 右下角卡其原木色悬浮添加按钮 */}
       <button 
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => { if (!isQuickNoteOpen) setIsModalOpen(true); }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           position: 'fixed', right: '24px', bottom: '90px',
           width: '56px', height: '56px', borderRadius: '50%',
@@ -234,6 +256,14 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
       >
         <Plus size={26} strokeWidth={2.5} />
       </button>
+
+      {isQuickNoteOpen && (
+        <QuickNoteModal 
+          onClose={() => setIsQuickNoteOpen(false)}
+          onSaved={() => { fetchRecords(); }}
+          initialDate={activeDate}
+        />
+      )}
 
       {isModalOpen && (
         <RecordModal 

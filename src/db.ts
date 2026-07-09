@@ -2,7 +2,8 @@ export interface FoodRecord {
   id: string;          // 唯一 UUID
   timestamp: number;   // 用餐时间戳
   foodName: string;    // 食物名称
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'tea' | 'night';
+  mealType: string;    // 食物名称 (改为 string 兼容自定义标签)
+  price?: number;      // 价格
   rating: number;      // 1-5 评分
   isNewFood: boolean;  // 是否为新食物
   diningWith?: string; // 和谁吃

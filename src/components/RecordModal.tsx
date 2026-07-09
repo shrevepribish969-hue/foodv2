@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Camera, Star, Heart, Pencil, Sun, Moon, Coffee } from 'lucide-react';
+import { Camera, Star, Heart, Pencil, Sun, Moon, Coffee, Image as ImageIcon, X, Plus } from 'lucide-react';
 import { type FoodRecord, addRecord } from '../db';
 import { removeBackground } from '@imgly/background-removal';
 
@@ -49,9 +49,23 @@ const resizeImage = (file: File, maxSide: number): Promise<Blob> => {
   });
 };
 
+const DEFAULT_TAGS = ['早餐', '午餐', '晚餐', '饮品'];
+const loadTags = () => {
+  try {
+    const stored = localStorage.getItem('food_tags');
+    return stored ? JSON.parse(stored) : DEFAULT_TAGS;
+  } catch (e) {
+    return DEFAULT_TAGS;
+  }
+};
+
 export default function RecordModal({ onClose, onSaved, initialDate, recordToEdit }: RecordModalProps) {
+  const initialTags = loadTags();
   const [foodName, setFoodName] = useState(recordToEdit ? recordToEdit.foodName : '');
-  const [mealType, setMealType] = useState<FoodRecord['mealType']>(recordToEdit ? recordToEdit.mealType : 'breakfast');
+  const [mealType, setMealType] = useState<string>(recordToEdit ? recordToEdit.mealType : (initialTags[0] || '早餐'));
+  const [price, setPrice] = useState(recordToEdit && recordToEdit.price !== undefined ? String(recordToEdit.price) : '');
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const [isEditingTags, setIsEditingTags] = useState(false);
   const [rating, setRating] = useState(recordToEdit ? recordToEdit.rating : 5);
   const [isNewFood, setIsNewFood] = useState(recordToEdit ? recordToEdit.isNewFood : false);
   const [diningWith, setDiningWith] = useState(recordToEdit ? (recordToEdit.diningWith || '') : '');
@@ -71,6 +85,27 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
+
+  const saveTags = (newTags: string[]) => {
+    setTags(newTags);
+    localStorage.setItem('food_tags', JSON.stringify(newTags));
+  };
+
+  const handleAddTag = () => {
+    const newTag = prompt('请输入新标签名称');
+    if (newTag && newTag.trim() && !tags.includes(newTag.trim())) {
+      saveTags([...tags, newTag.trim()]);
+    }
+  };
+
+  const handleDeleteTag = (tag: string) => {
+    if (confirm(`确定要删除标签 "${tag}" 吗？`)) {
+      const newTags = tags.filter(t => t !== tag);
+      saveTags(newTags);
+      if (mealType === tag) setMealType(newTags[0] || '');
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -345,6 +380,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       timestamp: recordTime,
       foodName,
       mealType,
+      price: price ? parseFloat(price) : undefined,
       rating,
       isNewFood,
       diningWith: diningWith.trim() || undefined,
@@ -429,11 +465,29 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
               ) : (
                 <div onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                   <Camera size={28} color="#B5A58E" />
-                  <span style={{ fontSize: '0.75rem', color: '#8A857C', marginTop: '6px' }}>点击拍照/上传食物</span>
+                  <span style={{ fontSize: '0.75rem', color: '#8A857C', marginTop: '6px' }}>点击拍照记录食物</span>
                 </div>
               )}
             </div>
             
+            {!processedUrl && !processing && (
+              <button 
+                type="button"
+                onClick={(e) => { e.stopPropagation(); albumInputRef.current?.click(); }}
+                style={{
+                  position: 'absolute', right: '12px', bottom: '12px',
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: '#FFF', border: '1px solid var(--color-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  zIndex: 20
+                }}
+                className="bouncy-hover"
+              >
+                <ImageIcon size={16} color="#8B7D6C" />
+              </button>
+            )}
+
             {/* 铅笔编辑按钮 (重新上传图片) */}
             {processedUrl && !processing && (
               <button 
@@ -453,7 +507,8 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
               </button>
             )}
             
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} style={{ display: 'none' }} />
+            <input ref={albumInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
           </div>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           
@@ -496,35 +551,55 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
 
           {/* 餐时分类 (小图标圆形细框按钮) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>餐时</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>餐时</span>
+              <button onClick={() => setIsEditingTags(!isEditingTags)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <Pencil size={14} color="#8A857C" />
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {(['breakfast', 'lunch', 'tea', 'dinner', 'night'] as const).map((type) => {
+              {tags.map((type) => {
                 const isSelected = mealType === type;
                 return (
                   <button 
                     key={type} 
                     type="button"
-                    onClick={() => setMealType(type)}
+                    onClick={() => { if (!isEditingTags) setMealType(type); }}
                     style={{
-                      flex: 1, padding: '6px 0', borderRadius: '18px', fontSize: '0.75rem',
+                      flex: 1, padding: '6px 10px', borderRadius: '18px', fontSize: '0.75rem',
                       border: '1px solid',
-                      borderColor: isSelected ? 'var(--color-green)' : 'var(--color-border)',
-                      background: isSelected ? 'var(--color-green)' : '#FFF',
-                      color: isSelected ? '#FFF' : '#8A857C',
+                      borderColor: isSelected && !isEditingTags ? 'var(--color-green)' : 'var(--color-border)',
+                      background: isSelected && !isEditingTags ? 'var(--color-green)' : '#FFF',
+                      color: isSelected && !isEditingTags ? '#FFF' : '#8A857C',
                       cursor: 'pointer',
-                      fontWeight: isSelected ? 'bold' : 'normal',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px',
-                      transition: 'all 0.15s ease'
+                      fontWeight: isSelected && !isEditingTags ? 'bold' : 'normal',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                      transition: 'all 0.15s ease',
+                      minWidth: 'max-content'
                     }}
                   >
-                    {type === 'breakfast' && <><Sun size={10} /> 早餐</>}
-                    {type === 'lunch' && <><Sun size={10} /> 午餐</>}
-                    {type === 'tea' && <><Coffee size={10} /> 下午茶</>}
-                    {type === 'dinner' && <><Moon size={10} /> 晚餐</>}
-                    {type === 'night' && <><Coffee size={10} /> 夜宵</>}
+                    {type === '早餐' && <Sun size={10} />}
+                    {type === '午餐' && <Sun size={10} />}
+                    {type === '下午茶' && <Coffee size={10} />}
+                    {type === '晚餐' && <Moon size={10} />}
+                    {type === '夜宵' && <Coffee size={10} />}
+                    {type === '饮品' && <Coffee size={10} />}
+                    {type}
+                    {isEditingTags && (
+                      <X size={12} color="#8A857C" style={{ marginLeft: '4px' }} onClick={(e) => { e.stopPropagation(); handleDeleteTag(type); }} />
+                    )}
                   </button>
                 );
               })}
+              {isEditingTags && (
+                <button onClick={handleAddTag} type="button" style={{
+                  padding: '6px 12px', borderRadius: '18px', fontSize: '0.75rem', border: '1px dashed var(--color-border)',
+                  background: '#FAF6EE', color: '#8A857C', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                  minWidth: 'max-content'
+                }}>
+                  <Plus size={10} /> 新增
+                </button>
+              )}
             </div>
           </div>
 
@@ -589,6 +664,27 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
                   border: 'none', background: 'transparent', textAlign: 'right',
                   fontFamily: 'var(--font-cute)', fontSize: '0.9rem', color: 'var(--color-text)',
                   outline: 'none', width: '150px'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            borderBottom: '1px solid var(--color-border)', paddingBottom: '10px' 
+          }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>价格</span>
+            <div style={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'flex-end', gap: '4px' }}>
+              <span style={{ color: 'var(--color-text)', fontWeight: 'bold' }}>¥</span>
+              <input 
+                type="number" 
+                placeholder="0.00"
+                value={price} 
+                onChange={(e) => setPrice(e.target.value)}
+                style={{ 
+                  border: 'none', background: 'transparent', textAlign: 'right',
+                  fontFamily: 'var(--font-cute)', fontSize: '0.9rem', color: 'var(--color-text)',
+                  outline: 'none', width: '80px'
                 }}
               />
             </div>

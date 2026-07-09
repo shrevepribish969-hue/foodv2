@@ -135,6 +135,21 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     const timer = setInterval(() => {
       setElapsedTime(prev => prev + 1);
     }, 1000);
+
+    // 启动虚拟进度条更新
+    let fakePercent = 0;
+    const progressTimer = setInterval(() => {
+      if (fakePercent < 30) {
+        fakePercent += 1.5;
+      } else if (fakePercent < 60) {
+        fakePercent += 0.8;
+      } else if (fakePercent < 85) {
+        fakePercent += 0.4;
+      } else if (fakePercent < 95) {
+        fakePercent += 0.15;
+      }
+      setProgressPercent(Math.min(Math.round(fakePercent), 95));
+    }, 200);
     
     try {
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
@@ -143,18 +158,25 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
         model: 'small',
         progress: (key, current, total) => {
           const fileName = key.substring(key.lastIndexOf('/') + 1);
-          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-          setProgressPercent(percent);
-          setProgressText(`下载 ${fileName}... ${percent}%`);
+          if (total > 0) {
+            const percent = Math.round((current / total) * 100);
+            setProgressText(`下载 ${fileName}... ${percent}%`);
+          } else {
+            const currentMB = (current / 1024 / 1024).toFixed(1);
+            setProgressText(`下载 ${fileName}... ${currentMB}MB`);
+          }
         }
       });
       
+      setProgressPercent(100);
+      clearInterval(progressTimer);
       clearInterval(timer);
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
       const originalUrl = URL.createObjectURL(compressedFile);
       const cutoutUrl = URL.createObjectURL(processedBlob);
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
+      clearInterval(progressTimer);
       clearInterval(timer);
       setErrorMsg(err?.message || String(err));
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);

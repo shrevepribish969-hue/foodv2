@@ -6,6 +6,8 @@ import ReportPage from './components/ReportPage';
 import FavoritesPage from './components/FavoritesPage';
 import { Calendar, Grid, BarChart3, Heart } from 'lucide-react';
 
+import { toLocalYMD } from './db';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'today' | 'month' | 'report' | 'favorites'>('today');
   const [activeDate, setActiveDate] = useState<Date>(new Date());
@@ -16,7 +18,7 @@ export default function App() {
     
     // 延迟滚动定位到对应日期的节点
     setTimeout(() => {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = toLocalYMD(date);
       const element = document.getElementById(`date-node-${dateStr}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });

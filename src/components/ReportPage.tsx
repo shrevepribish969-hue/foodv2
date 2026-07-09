@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { type FoodRecord, getAllRecords } from '../db';
+import { type FoodRecord, getAllRecords, toLocalYMD } from '../db';
 import { Key, Share2, ChevronDown } from 'lucide-react';
 
 export default function ReportPage() {
@@ -143,10 +143,10 @@ export default function ReportPage() {
       // 过去 7 天
       for (let i = 6; i >= 0; i--) {
         const d = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = toLocalYMD(d);
         const sum = records.reduce((acc, r) => {
           try {
-            const rDateStr = new Date(r.timestamp).toISOString().split('T')[0];
+            const rDateStr = toLocalYMD(r.timestamp);
             if (rDateStr === dateStr) {
               return acc + (Number(r.price) || 0);
             }

@@ -68,3 +68,11 @@ export async function getAllRecords(): Promise<FoodRecord[]> {
     request.onerror = () => reject(request.error);
   });
 }
+
+export function toLocalYMD(timestamp: number | Date): string {
+  const d = typeof timestamp === 'number' ? new Date(timestamp) : timestamp;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const date = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${date}`;
+}

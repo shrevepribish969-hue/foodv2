@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Heart, Star, Settings, Sun, Moon, Coffee } from 'lucide-react';
-import { type FoodRecord, getAllRecords, deleteRecord } from '../db';
+import { type FoodRecord, getAllRecords, deleteRecord, toLocalYMD } from '../db';
 import RecordModal from './RecordModal';
 import QuickNoteModal from './QuickNoteModal';
 
@@ -48,7 +48,7 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
     const groups: Record<string, FoodRecord[]> = {};
     records.forEach(r => {
       try {
-        const dateStr = new Date(r.timestamp).toISOString().split('T')[0];
+        const dateStr = toLocalYMD(r.timestamp);
         if (!groups[dateStr]) groups[dateStr] = [];
         groups[dateStr].push(r);
       } catch (e) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { type FoodRecord, getAllRecords } from '../db';
+import { type FoodRecord, getAllRecords, toLocalYMD } from '../db';
 import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 import DayStickerSelectModal from './DayStickerSelectModal';
 
@@ -30,7 +30,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
 
   const handleSaveCover = (recordId: string) => {
     if (!selectingDate) return;
-    const dateStr = selectingDate.toISOString().split('T')[0];
+    const dateStr = toLocalYMD(selectingDate);
     const newPrefs = { ...coverPrefs, [dateStr]: recordId };
     setCoverPrefs(newPrefs);
     localStorage.setItem('food_cover_prefs', JSON.stringify(newPrefs));
@@ -120,10 +120,10 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   }
 
   const getDayRecords = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalYMD(date);
     return records.filter(r => {
       try {
-        return new Date(r.timestamp).toISOString().split('T')[0] === dateStr;
+        return toLocalYMD(r.timestamp) === dateStr;
       } catch {
         return false;
       }
@@ -165,10 +165,10 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
         {daysArray.map((date, idx) => {
           if (!date) return <div key={`empty-${idx}`} style={{ height: '68px' }} />;
           
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = toLocalYMD(date);
           const dayRecords = getDayRecords(date);
           const hasRecord = dayRecords.length > 0;
-          const isToday = new Date().toISOString().split('T')[0] === dateStr;
+          const isToday = toLocalYMD(new Date()) === dateStr;
 
           // 挑选最佳记录，优先使用偏好设置，否则按照评分和时间排序
           let bestRecord = coverPrefs[dateStr] 
@@ -420,7 +420,7 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
         <DayStickerSelectModal
           date={selectingDate}
           records={getDayRecords(selectingDate)}
-          currentCoverId={coverPrefs[selectingDate.toISOString().split('T')[0]]}
+          currentCoverId={coverPrefs[toLocalYMD(selectingDate)]}
           onSelect={handleSaveCover}
           onClose={() => setSelectingDate(null)}
         />

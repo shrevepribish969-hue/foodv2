@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { type FoodRecord, getAllRecords } from '../db';
 import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
+import DayStickerSelectModal from './DayStickerSelectModal';
 
 interface MonthViewProps {
   onSelectDate: (date: Date) => void;
@@ -14,6 +15,27 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [randomParams, setRandomParams] = useState<{ rot: number; ox: number; oy: number; scale: number }[]>([]);
+
+  // 长按选封面状态
+  const [coverPrefs, setCoverPrefs] = useState<Record<string, string>>({});
+  const [selectingDate, setSelectingDate] = useState<Date | null>(null);
+  const [pressTimer, setPressTimer] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const prefs = localStorage.getItem('food_cover_prefs');
+      if (prefs) setCoverPrefs(JSON.parse(prefs));
+    } catch { }
+  }, []);
+
+  const handleSaveCover = (recordId: string) => {
+    if (!selectingDate) return;
+    const dateStr = selectingDate.toISOString().split('T')[0];
+    const newPrefs = { ...coverPrefs, [dateStr]: recordId };
+    setCoverPrefs(newPrefs);
+    localStorage.setItem('food_cover_prefs', JSON.stringify(newPrefs));
+    setSelectingDate(null);
+  };
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -143,24 +165,48 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
         {daysArray.map((date, idx) => {
           if (!date) return <div key={`empty-${idx}`} style={{ height: '68px' }} />;
           
+          const dateStr = date.toISOString().split('T')[0];
           const dayRecords = getDayRecords(date);
           const hasRecord = dayRecords.length > 0;
-          const isToday = new Date().toISOString().split('T')[0] === date.toISOString().split('T')[0];
+          const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
-          // 挑选出喜爱度（rating 降序，isFavorited 降序，时间戳降序）最高的一顿饭
-          const bestRecord = [...dayRecords].sort((a, b) => {
-            if (b.rating !== a.rating) return b.rating - a.rating;
-            const aFav = a.isFavorited ? 1 : 0;
-            const bFav = b.isFavorited ? 1 : 0;
-            if (bFav !== aFav) return bFav - aFav;
-            return b.timestamp - a.timestamp;
-          })[0];
+          // 挑选最佳记录，优先使用偏好设置，否则按照评分和时间排序
+          let bestRecord = coverPrefs[dateStr] 
+            ? dayRecords.find(r => r.id === coverPrefs[dateStr]) 
+            : undefined;
+            
+          if (!bestRecord) {
+            bestRecord = [...dayRecords].sort((a, b) => {
+              if (b.rating !== a.rating) return b.rating - a.rating;
+              const aFav = a.isFavorited ? 1 : 0;
+              const bFav = b.isFavorited ? 1 : 0;
+              if (bFav !== aFav) return bFav - aFav;
+              return b.timestamp - a.timestamp;
+            })[0];
+          }
+
+          const handlePointerDown = () => {
+            const timer = window.setTimeout(() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              setSelectingDate(date);
+            }, 500);
+            setPressTimer(timer);
+          };
+
+          const handlePointerUp = () => {
+            if (pressTimer) clearTimeout(pressTimer);
+            setPressTimer(null);
+          };
 
           return (
             <button 
               key={date.toISOString()}
               type="button"
-              onClick={() => onSelectDate(date)}
+              onClick={() => { if (!selectingDate) onSelectDate(date); }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onContextMenu={(e) => e.preventDefault()}
               style={{
                 height: '68px', 
                 background: isToday ? 'var(--color-green)' : (hasRecord ? '#FAF9F5' : '#F2EFE7'),
@@ -368,6 +414,16 @@ export default function MonthView({ onSelectDate }: MonthViewProps) {
             })}
           </div>
         </div>
+      )}
+
+      {selectingDate && (
+        <DayStickerSelectModal
+          date={selectingDate}
+          records={getDayRecords(selectingDate)}
+          currentCoverId={coverPrefs[selectingDate.toISOString().split('T')[0]]}
+          onSelect={handleSaveCover}
+          onClose={() => setSelectingDate(null)}
+        />
       )}
     </div>
   );

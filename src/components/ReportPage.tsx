@@ -8,6 +8,7 @@ export default function ReportPage() {
   const [apiKey, setApiKey] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const [chartPeriod, setChartPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -132,6 +133,72 @@ export default function ReportPage() {
     } finally {
       setLoadingAi(false);
     }
+  };
+
+  const getChartData = () => {
+    const nowObj = new Date();
+    const list: { label: string; value: number }[] = [];
+
+    if (chartPeriod === 'daily') {
+      // 过去 7 天
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const sum = records.reduce((acc, r) => {
+          try {
+            const rDateStr = new Date(r.timestamp).toISOString().split('T')[0];
+            if (rDateStr === dateStr) {
+              return acc + (Number(r.price) || 0);
+            }
+          } catch {}
+          return acc;
+        }, 0);
+        list.push({
+          label: `${d.getMonth() + 1}/${d.getDate()}`,
+          value: Math.round(sum * 100) / 100
+        });
+      }
+    } else if (chartPeriod === 'weekly') {
+      // 过去 4 周
+      for (let i = 3; i >= 0; i--) {
+        const start = new Date(nowObj.getTime() - (i + 1) * 7 * 24 * 3600 * 1000 + 1000);
+        const end = new Date(nowObj.getTime() - i * 7 * 24 * 3600 * 1000);
+        const sum = records.reduce((acc, r) => {
+          try {
+            const t = r.timestamp;
+            if (t >= start.getTime() && t <= end.getTime()) {
+              return acc + (Number(r.price) || 0);
+            }
+          } catch {}
+          return acc;
+        }, 0);
+        list.push({
+          label: `${start.getMonth() + 1}.${start.getDate()}-${end.getMonth() + 1}.${end.getDate()}`,
+          value: Math.round(sum * 100) / 100
+        });
+      }
+    } else if (chartPeriod === 'monthly') {
+      // 过去 6 个月
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(nowObj.getFullYear(), nowObj.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const sum = records.reduce((acc, r) => {
+          try {
+            const rd = new Date(r.timestamp);
+            if (rd.getFullYear() === y && rd.getMonth() === m) {
+              return acc + (Number(r.price) || 0);
+            }
+          } catch {}
+          return acc;
+        }, 0);
+        list.push({
+          label: `${m + 1}月`,
+          value: Math.round(sum * 100) / 100
+        });
+      }
+    }
+    return list;
   };
 
   const handleExport = () => {
@@ -272,6 +339,165 @@ export default function ReportPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* 花销追踪图表 */}
+      <div style={{
+        background: '#FAF9F5',
+        border: '1px solid var(--color-border)',
+        borderRadius: '12px',
+        padding: '16px',
+        boxShadow: '0 4px 15px rgba(62, 58, 54, 0.02)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--color-text)', margin: 0 }}>花销趋势</h3>
+          {/* 时间维度切换按钮 */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--color-bg)',
+            borderRadius: '8px',
+            padding: '2px',
+            border: '1px solid var(--color-border)'
+          }}>
+            {(['daily', 'weekly', 'monthly'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setChartPeriod(period)}
+                style={{
+                  background: chartPeriod === period ? '#FFF' : 'none',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '0.7rem',
+                  fontWeight: 'bold',
+                  color: chartPeriod === period ? 'var(--color-green)' : '#8A857C',
+                  cursor: 'pointer',
+                  boxShadow: chartPeriod === period ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {period === 'daily' ? '日' : period === 'weekly' ? '周' : '月'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* SVG 折线图 */}
+        {(() => {
+          const data = getChartData();
+          const width = 500;
+          const height = 140;
+          const paddingLeft = 30;
+          const paddingRight = 30;
+          const paddingTop = 25;
+          const paddingBottom = 25;
+
+          const usableWidth = width - paddingLeft - paddingRight;
+          const usableHeight = height - paddingTop - paddingBottom;
+
+          const maxValue = Math.max(...data.map(d => d.value), 10);
+
+          const points = data.map((item, idx) => {
+            const x = paddingLeft + (idx * usableWidth) / Math.max(data.length - 1, 1);
+            const y = height - paddingBottom - (item.value * usableHeight) / maxValue;
+            return { x, y, ...item };
+          });
+
+          const dPath = points.map((p, idx) => (idx === 0 ? 'M' : 'L') + ` ${p.x} ${p.y}`).join(' ');
+          const dArea = points.length > 0 
+            ? `${dPath} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`
+            : '';
+
+          return (
+            <div style={{ position: 'relative', width: '100%' }}>
+              <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-green)" stopOpacity="0.18" />
+                    <stop offset="100%" stopColor="var(--color-green)" stopOpacity="0.00" />
+                  </linearGradient>
+                </defs>
+
+                {/* 辅助网格线（横线） */}
+                {[0, 0.5, 1].map((ratio, idx) => {
+                  const y = paddingTop + ratio * usableHeight;
+                  return (
+                    <line
+                      key={idx}
+                      x1={paddingLeft}
+                      y1={y}
+                      x2={width - paddingRight}
+                      y2={y}
+                      stroke="rgba(227, 223, 213, 0.4)"
+                      strokeWidth="1"
+                      strokeDasharray="4 4"
+                    />
+                  );
+                })}
+
+                {/* 渐变面积 */}
+                {dArea && (
+                  <path d={dArea} fill="url(#chartGradient)" />
+                )}
+
+                {/* 折线 */}
+                {dPath && (
+                  <path
+                    d={dPath}
+                    fill="none"
+                    stroke="var(--color-green)"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+
+                {/* 数据节点与金额标注 */}
+                {points.map((p, idx) => (
+                  <g key={idx}>
+                    {/* 外圈发光 */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="7"
+                      fill="#FFF"
+                      stroke="var(--color-green)"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 1px 3px rgba(62,58,54,0.1))' }}
+                    />
+                    
+                    {/* 金额文字标签 */}
+                    <text
+                      x={p.x}
+                      y={p.y - 12}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fontWeight="bold"
+                      fill="var(--color-text)"
+                    >
+                      {p.value > 0 ? `¥${p.value}` : ''}
+                    </text>
+
+                    {/* X轴标签 */}
+                    <text
+                      x={p.x}
+                      y={height - 6}
+                      textAnchor="middle"
+                      fontSize="9.5"
+                      fill="#8A857C"
+                      fontWeight="600"
+                    >
+                      {p.label}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          );
+        })()}
       </div>
 
       {/* 趣味手账数据格子 (一排 3 个) */}

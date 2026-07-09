@@ -77,9 +77,7 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
   const [processedUrl, setProcessedUrl] = useState<string | null>(recordToEdit && recordToEdit.imageBlob ? URL.createObjectURL(recordToEdit.imageBlob) : null);
   const [recordTime, setRecordTime] = useState<number>(recordToEdit ? recordToEdit.timestamp : (initialDate ? initialDate.getTime() : Date.now()));
   const [processing, setProcessing] = useState(false);
-  const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [elapsedTime, setElapsedTime] = useState(0);
 
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -112,10 +110,8 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     if (!file) return;
 
     setProcessing(true);
-    setElapsedTime(0);
     setProgressPercent(0);
     setErrorMsg('');
-    setProgressText('正在压缩图片...');
 
 
 
@@ -128,13 +124,6 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
     }
 
 
-
-    setProgressText('正在加载模型文件...');
-
-    // 启动运行计时器
-    const timer = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
 
     // 启动虚拟进度条更新
     let fakePercent = 0;
@@ -155,29 +144,17 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
       // 1. 尝试调用 AI 去背景 (WASM 算法，使用本地托管资源)
       const processedBlob = await removeBackground(compressedFile as File, {
         publicPath: 'https://cdn.npmmirror.com/packages/@imgly/background-removal-data/1.4.5/files/dist/',
-        model: 'small',
-        progress: (key, current, total) => {
-          const fileName = key.substring(key.lastIndexOf('/') + 1);
-          if (total > 0) {
-            const percent = Math.round((current / total) * 100);
-            setProgressText(`下载 ${fileName}... ${percent}%`);
-          } else {
-            const currentMB = (current / 1024 / 1024).toFixed(1);
-            setProgressText(`下载 ${fileName}... ${currentMB}MB`);
-          }
-        }
+        model: 'small'
       });
       
       setProgressPercent(100);
       clearInterval(progressTimer);
-      clearInterval(timer);
       // 2. 绘制原图压暗 + 食物高亮 + 白色虚线
       const originalUrl = URL.createObjectURL(compressedFile);
       const cutoutUrl = URL.createObjectURL(processedBlob);
       drawSpotlightFood(originalUrl, cutoutUrl);
     } catch (err: any) {
       clearInterval(progressTimer);
-      clearInterval(timer);
       setErrorMsg(err?.message || String(err));
       console.warn("WASM去背景加载失败或超时，自动切换至形状裁剪贴纸:", err);
       // 兜底方案：使用原始大图，做聚光灯模糊兜底
@@ -443,28 +420,22 @@ export default function RecordModal({ onClose, onSaved, initialDate, recordToEdi
               overflow: 'visible', position: 'relative'
             }}>
               {processing ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '0 8px', textAlign: 'center' }}>
-                  <div style={{ width: '160px', height: '6px', background: '#EAE6DF', borderRadius: '4px', overflow: 'hidden', margin: '8px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '0 8px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#8A857C', fontWeight: 'bold' }}>
+                    图片处理中... {progressPercent}%
+                  </span>
+                  <div style={{ width: '160px', height: '6px', background: '#EAE6DF', borderRadius: '4px', overflow: 'hidden', margin: '4px 0' }}>
                     <div style={{ 
                       width: `${progressPercent}%`, height: '100%', 
                       background: 'var(--color-green)', borderRadius: '4px',
                       transition: 'width 0.2s ease-out'
                     }} />
                   </div>
-                  <span style={{ fontSize: '0.78rem', color: '#8A857C', fontWeight: 'bold' }}>{progressText}</span>
-                  <span style={{ fontSize: '0.75rem', color: '#B5A58E', margin: '4px 0' }}>已耗时: <b style={{ color: 'var(--color-green)' }}>{elapsedTime} 秒</b></span>
-                  
-                  {/* 诊断仪表盘 */}
-                  <div style={{
-                    background: '#F4EFE6', borderRadius: '8px', padding: '6px 10px', 
-                    fontSize: '0.62rem', color: '#6E6A63', textAlign: 'left',
-                    width: '100%', maxWidth: '220px', display: 'flex', flexDirection: 'column', gap: '3px'
-                  }}>
-                    {errorMsg && <div style={{ color: '#FF5722', fontWeight: 'bold', marginTop: '2px', borderTop: '1px dashed #FFCDD2', paddingTop: '2px' }}>❌ 错误: {errorMsg}</div>}
-                    <div style={{ color: '#8A857C', fontSize: '0.58rem', marginTop: '2px', borderTop: '1px dashed #E5DDCF', paddingTop: '2px' }}>
-                      ℹ️ 首次运行需自动拉取 88MB 模型缓存，超时（或单线程运行超过1分钟）将自动切换为虚线圈原图兜底。
+                  {errorMsg && (
+                    <div style={{ color: '#FF5722', fontSize: '0.62rem', fontWeight: 'bold', marginTop: '2px' }}>
+                      ❌ 错误: {errorMsg}
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : processedUrl ? (
                 <img src={processedUrl} alt="food preview" style={{ 

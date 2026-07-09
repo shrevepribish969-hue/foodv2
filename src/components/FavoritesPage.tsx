@@ -240,7 +240,15 @@ export default function FavoritesPage({ onSelectDate: _onSelectDate, setActiveTa
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '8px 4px' }}>
-      <div>
+      <header style={{ 
+        position: 'sticky',
+        top: '-16px',
+        marginTop: '-16px',
+        paddingTop: '16px',
+        paddingBottom: '12px',
+        background: 'var(--color-bg)',
+        zIndex: 100
+      }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 16px', color: 'var(--color-text)', letterSpacing: '2px' }}>
           我的收藏
         </h1>
@@ -268,7 +276,7 @@ export default function FavoritesPage({ onSelectDate: _onSelectDate, setActiveTa
             }}
           />
         </div>
-      </div>
+      </header>
 
       {/* 扭蛋机“今天吃什么”卡片入口 */}
       <div style={{

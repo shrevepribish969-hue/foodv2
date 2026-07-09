@@ -206,10 +206,19 @@ export default function ReportPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '32px', padding: '8px 4px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', padding: '8px 4px' }}>
       
       {/* 极简 Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header style={{ 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        position: 'sticky',
+        top: '-16px',
+        marginTop: '-16px',
+        paddingTop: '16px',
+        paddingBottom: '10px',
+        background: 'var(--color-bg)',
+        zIndex: 100
+      }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: 0, color: 'var(--color-text)' }}>
           回忆录
         </h1>
@@ -222,7 +231,7 @@ export default function ReportPage() {
         <button style={{ background: 'none', border: 'none', color: 'var(--color-text)', cursor: 'pointer', padding: 0 }}>
           <Share2 size={20} />
         </button>
-      </div>
+      </header>
 
       {/* AI 月度回忆信笺大卡片 */}
       <div style={{ 
@@ -230,12 +239,12 @@ export default function ReportPage() {
         background: '#FAF6EE', 
         border: '1px solid var(--color-border)', 
         borderRadius: '12px',
-        padding: '24px 20px', 
+        padding: '16px 16px', 
         boxShadow: '0 4px 15px rgba(62, 58, 54, 0.04)',
-        marginTop: '8px',
+        marginTop: '4px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '8px'
       }}>
         {/* 45度倾斜半透明胶带 */}
         <div style={{
@@ -501,55 +510,55 @@ export default function ReportPage() {
       </div>
 
       {/* 趣味手账数据格子 (一排 3 个) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '0px' }}>
         
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{totalMeals}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>累计用餐次数</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{totalMeals}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>累计用餐</span>
         </div>
 
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{newFoodsCount}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>尝鲜新食物</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{newFoodsCount}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>尝鲜食物</span>
         </div>
 
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{drinksCount}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>饮品次数</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{drinksCount}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>饮品次数</span>
         </div>
 
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{friendGatherCount}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>朋友聚餐次数</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-text)', display: 'block' }}>{friendGatherCount}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>朋友聚餐</span>
         </div>
 
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '24px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '24px' }} title={mostLiked}>{mostLiked}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>最偏爱</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '22px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '22px' }} title={mostLiked}>{mostLiked}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>最偏爱</span>
         </div>
 
-        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px 6px', textAlign: 'center' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '24px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '24px' }} title={mostEaten}>{mostEaten}</span>
-          <span style={{ fontSize: '0.65rem', color: '#8A857C' }}>最常吃</span>
+        <div style={{ background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 4px', textAlign: 'center' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--color-green)', display: 'block', height: '22px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: '22px' }} title={mostEaten}>{mostEaten}</span>
+          <span style={{ fontSize: '0.62rem', color: '#8A857C' }}>最常吃</span>
         </div>
 
       </div>
 
       {/* 宽长数据格子 (全宽) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         
         {/* 最晚用餐 */}
         <div style={{ 
           background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', 
-          padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+          padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
         }}>
-          <span style={{ fontSize: '0.8rem', color: '#8A857C' }}>最晚用餐</span>
-          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
+          <span style={{ fontSize: '0.75rem', color: '#8A857C' }}>最晚用餐</span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
             {latestMeal ? (
               <>
                 {new Date((latestMeal as FoodRecord).timestamp).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })} · 
                 {(latestMeal as FoodRecord).mealType === 'night' ? '夜宵' : '晚餐'} 
-                <span style={{ marginLeft: '6px', color: 'var(--color-green)' }}>
+                <span style={{ marginLeft: '4px', color: 'var(--color-green)' }}>
                   {new Date((latestMeal as FoodRecord).timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </>
@@ -560,10 +569,10 @@ export default function ReportPage() {
         {/* 最常去地点 */}
         <div style={{ 
           background: '#FAF9F5', border: '1px solid var(--color-border)', borderRadius: '8px', 
-          padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+          padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
         }}>
-          <span style={{ fontSize: '0.8rem', color: '#8A857C' }}>最常去地点</span>
-          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
+          <span style={{ fontSize: '0.75rem', color: '#8A857C' }}>最常去地点</span>
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--color-text)' }}>
             {topLocation}
           </span>
         </div>
@@ -575,10 +584,10 @@ export default function ReportPage() {
         type="button"
         onClick={handleExport}
         style={{
-          width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+          width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
           background: 'var(--color-green)', color: '#FFF', fontWeight: 'bold',
-          fontSize: '0.95rem', cursor: 'pointer', marginTop: '12px',
-          boxShadow: '0 4px 15px rgba(139, 125, 108, 0.2)'
+          fontSize: '0.9rem', cursor: 'pointer', marginTop: '0px',
+          boxShadow: '0 4px 15px rgba(139, 125, 108, 0.15)'
         }}
         className="bouncy-hover"
       >

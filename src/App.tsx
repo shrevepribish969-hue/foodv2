@@ -27,8 +27,23 @@ export default function App() {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px', minHeight: '100vh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      <main style={{ flex: 1, paddingBottom: '90px', paddingTop: '8px' }}>
+    <div style={{ 
+      maxWidth: '600px', 
+      margin: '0 auto', 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      position: 'relative',
+      background: 'var(--color-bg)'
+    }}>
+      <main style={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        padding: '16px 16px 80px 16px', 
+        boxSizing: 'border-box' 
+      }}>
         {activeTab === 'today' && <TodayPage activeDate={activeDate} setActiveDate={setActiveDate} />}
         {activeTab === 'month' && <MonthView onSelectDate={handleSelectDateFromCalendar} />}
         {activeTab === 'report' && <ReportPage />}
@@ -43,19 +58,20 @@ export default function App() {
       {/* MUJI 极简底栏导航 (带文字) */}
       <nav style={{ 
         position: 'fixed', 
-        bottom: '20px', 
+        bottom: '0px', 
         left: '50%',
         transform: 'translateX(-50%)',
-        width: 'calc(100% - 32px)',
-        maxWidth: '568px',
-        background: 'rgba(250, 249, 245, 0.95)', 
+        width: '100%',
+        maxWidth: '600px',
+        background: 'rgba(250, 249, 245, 0.98)', 
         backdropFilter: 'blur(12px)',
-        borderRadius: '16px', 
-        padding: '12px 20px', 
+        borderRadius: '0px', 
+        padding: '10px 20px env(safe-area-inset-bottom, 12px) 20px', 
         display: 'flex', 
         justifyContent: 'space-around',
-        boxShadow: '0 6px 20px rgba(62, 58, 54, 0.05)',
-        border: '1px solid var(--color-border)',
+        boxShadow: '0 -4px 16px rgba(62, 58, 54, 0.04)',
+        borderTop: '1px solid var(--color-border)',
+        boxSizing: 'border-box',
         zIndex: 500
       }}>
         {([

@@ -69,7 +69,14 @@ export default function TodayPage({ activeDate }: TodayPageProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '8px 4px' }}>
       {/* MUJI 极简 Header */}
       <header style={{ 
-        display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px'
+        display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px',
+        position: 'sticky',
+        top: '-16px',
+        marginTop: '-16px',
+        paddingTop: '16px',
+        paddingBottom: '12px',
+        background: 'var(--color-bg)',
+        zIndex: 100
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ 
